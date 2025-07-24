@@ -228,7 +228,7 @@ export default function LandingPage() {
             Sign In
           </button>
           
-          <button className="w-full bg-gray-800 hover:bg-gray-700 text-white font-semibold py-4 rounded-xl transition-colors">
+          <button onClick={()=>{navigate('/signup')}} className="w-full bg-gray-800 hover:bg-gray-700 text-white font-semibold py-4 rounded-xl transition-colors">
             Create Account
           </button>
         </div>
