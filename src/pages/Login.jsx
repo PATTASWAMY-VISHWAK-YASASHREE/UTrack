@@ -1,18 +1,38 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import GoogleLoginButton from '../components/GoogleLoginButton'
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../firebase";
+import CustomSpinner from '../components/CustomSpinner';
+
 
 const Login = () => {
   const navigate=useNavigate();  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const handleLogin = async () =>{
+    if(email==='' || password===''){
+      alert("enter valid login details");
 
-  const handleLogin = () => {
-    console.log('Login attempted with:', { email, password });
+      return;
+    }
+    try{
+      setLoading(true);
+      const userDetails=await signInWithEmailAndPassword(auth,email,password);
+      setLoading(false);
+      const user=userDetails.user;
+      console.log("successful login:",user);
+      navigate('/dashboard');
+    }
+    catch(error){
+      setLoading(false);
+      console.error(error.message);
+      alert("enter valid details");
+    }
   };
 
-  const handleGoogleLogin = () => {
-    console.log('Google login clicked');
-  };
+
 
   const handleSignup = () => {
     navigate('/signup');
@@ -22,8 +42,9 @@ const Login = () => {
     <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{backgroundColor: '#000'}}>
       <div className="container-fluid px-3">
         <div className="row justify-content-center">
+       
           <div className="col-12" style={{maxWidth: '400px'}}>
-            
+          
             {/* Header with Logo */}
             <div className="flex items-center justify-start p-6 pt-12">
         <div className="flex items-center space-x-3">
@@ -41,7 +62,7 @@ const Login = () => {
                 <h3 className="text-center mb-4" style={{fontSize: '32px', fontWeight: '600', color: '#333'}}>
                   Login
                 </h3>
-
+                {loading && <CustomSpinner />}
                 {/* Email Field */}
                 <div className="mb-3">
                   <div className="form-label mb-2" style={{fontSize: '16px', color: '#666', fontWeight: '500'}}>
@@ -108,33 +129,7 @@ const Login = () => {
                 </div>
 
                 {/* Google Login Button */}
-                <button
-                  type="button"
-                  className="btn w-100 d-flex align-items-center justify-content-center mb-4"
-                  onClick={handleGoogleLogin}
-                  style={{
-                    height: '50px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    backgroundColor: '#e9ecef',
-                    border: 'none',
-                    borderRadius: '25px',
-                    color: '#333'
-                  }}
-                >
-                  <span className="me-2">Continue With</span>
-                  <div 
-                    className="rounded-circle d-flex align-items-center justify-content-center"
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      backgroundColor: '#fff',
-                      border: '1px solid #ddd'
-                    }}
-                  >
-                    <span style={{fontSize: '14px', fontWeight: 'bold', color: '#4285f4'}}>G</span>
-                  </div>
-                </button>
+                <GoogleLoginButton/>
 
                 {/* Signup Link */}
                 <div className="text-center">

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomSpinner from '../components/CustomSpinner';
+import GoogleLoginButton from '../components/GoogleLoginButton'
+import {auth} from '../firebase'
+import {createUserWithEmailAndPassword} from 'firebase/auth';
 
-const Signup = () => {
+const Signup = () =>{
   const navigate=useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,18 +15,33 @@ const Signup = () => {
   const [loading, setLoading] = useState(false);
   
 
-  const handleSignup = () => {
-    setLoading(true);
-    console.log('Signup attempted with:', { 
-      email, 
-      password, 
-      confirmPassword, 
-      dateOfBirth, 
-      gender 
-    });
-    setTimeout(()=>{
-        navigate('/setup');
-    },5000);
+  const handleSignup = async() => {
+    if(email==='' || password==='' || confirmPassword==='' || dateOfBirth==='' || gender===''){
+      alert("Enter vaild details");
+      return;
+    }
+    else if(password!=confirmPassword){
+      alert("make sure password and confirmPassword are same");
+      return;
+    }
+    else{
+      try{
+        setLoading(true);
+         const userCredentials=await createUserWithEmailAndPassword(auth,email,password);
+         setLoading(false);
+         const user=userCredentials.user;
+         console.log(user);
+         localStorage.setItem("user",JSON.stringify(user));
+         navigate('/setup');
+
+         
+      }
+      catch(error){
+        setLoading(false);
+        console.error("Login error:", error.message);
+        alert("Invalid email or password");
+      }
+    }
     
     
   };
@@ -225,33 +243,7 @@ const Signup = () => {
                 </div>
 
                 {/* Google Signup Button */}
-                <button
-                  type="button"
-                  className="btn w-100 d-flex align-items-center justify-content-center mb-4"
-                  onClick={handleGoogleSignup}
-                  style={{
-                    height: '50px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    backgroundColor: '#e9ecef',
-                    border: 'none',
-                    borderRadius: '25px',
-                    color: '#333'
-                  }}
-                >
-                  <span className="me-2">Continue With</span>
-                  <div 
-                    className="rounded-circle d-flex align-items-center justify-content-center"
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      backgroundColor: '#fff',
-                      border: '1px solid #ddd'
-                    }}
-                  >
-                    <span style={{fontSize: '14px', fontWeight: 'bold', color: '#4285f4'}}>G</span>
-                  </div>
-                </button>
+                <GoogleLoginButton/>
 
                 {/* Login Link */}
                 <div className="text-center">
