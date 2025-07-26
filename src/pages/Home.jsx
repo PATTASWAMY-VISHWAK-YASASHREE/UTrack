@@ -88,11 +88,7 @@ const Home = () => {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      const userid=auth.currentUser;
-      console.log(userid.uid)
-      const user = JSON.parse(localStorage.getItem("user"))['uid'];
-      
-      
+      const user=auth.currentUser;
 
       if (!user) {
         console.log("No user logged in");
@@ -100,7 +96,7 @@ const Home = () => {
       }
 
       try {
-        const userRef = doc(db, 'users', user);
+        const userRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(userRef);
 
         if (docSnap.exists()) {
