@@ -79,6 +79,8 @@ const ChatItem = ({ title, description, icon }) => (
 
 
 const Home = () => {
+  const percentages = [20, 30, 40,80];
+
   return (
     <div>
       <div className="min-h-screen bg-black text-white">
@@ -90,37 +92,19 @@ const Home = () => {
 
         {/* Spending Overview */}
         <div className="mb-8">
-          <div className="flex flex-wrap gap-4">
-            <SpendingCard
-              title="This Month"
-              spent="12,500/-"
-              budget="15,000/-"
-              color="#10B981"
-              percentage={83}
-            />
-            <SpendingCard
-              title="This Week"
-              spent="4,500/-"
-              budget="3,750/-"
-              color="#F59E0B"
-              percentage={120}
-            />
-            <SpendingCard
-              title="Today"
-              spent="400/-"
-              budget="500/-"
-              color="#10B981"
-              percentage={80}
-            />
-            <SpendingCard
-              title="Over All"
-              spent="1,2,5000/-"
-              budget="1,5,0000/-"
-              color="#10B981"
-              percentage={83}
-            />
-          </div>
-        </div>
+      <div className="flex flex-wrap gap-4">
+        {percentages.map((p, index) => (
+          <SpendingCard
+            key={index}
+            title="This Month "
+            spent="12000/-"
+            budget="15000/-"
+            color="#10B981"
+            percentage={p}
+          />
+        ))}
+      </div>
+    </div>
 
         {/* Recent Receipts */}
         <div className="mb-8">
