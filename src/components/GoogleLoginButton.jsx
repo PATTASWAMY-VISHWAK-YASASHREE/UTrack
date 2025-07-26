@@ -1,9 +1,10 @@
 // src/components/GoogleLoginButton.js
 import React from "react";
 import { signInWithPopup } from "firebase/auth";
-import { auth, provider } from "../firebase";
+import { auth, provider,db } from "../firebase";
 import { getAdditionalUserInfo } from "firebase/auth";
 import { useNavigate } from 'react-router-dom';
+import { doc, setDoc } from "firebase/firestore";
 
 function GoogleLoginButton() {
   const navigate=useNavigate();  
@@ -12,10 +13,12 @@ function GoogleLoginButton() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       const additionalDetails=getAdditionalUserInfo(result);
-      localStorage.setItem("user",JSON.stringify(user))
+      const user_details={"userdetails":{"name":user.displayName,"email":user.email,"photoURL":user.photoURL}}
+      await setDoc(doc(db, "users", user.uid), user_details);
+      console.log("db update with userdetails");
       const isnewuser=additionalDetails.isNewUser;
       isnewuser? navigate('/setup'):navigate('/dashboard')
-
+      console.log("Additional User Info:", additionalDetails);
       console.log("User Info:", user);
       // Redirect or update UI accordingly
     } catch (error) {

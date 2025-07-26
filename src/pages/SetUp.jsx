@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import CustomSpinner from '../components/CustomSpinner'
 import {auth,db} from '../firebase'
 import { doc, updateDoc } from "firebase/firestore";
-
+import { onAuthStateChanged } from "firebase/auth";
 const SetupGuide = () => {
   const navigate=useNavigate();  
   const [currentStep, setCurrentStep] = useState(1);
@@ -40,10 +40,20 @@ const SetupGuide = () => {
     }
     setBudgetError('');
     setLoading(true)
-
-    const uid=auth.currentUser.uid
     const user_settings={ "usersettings":  {"currency":selectedCurrency,"montly_budget":budget}}
+    onAuthStateChanged(auth, async(user) => {
+  if (user) {
+    const uid = user.uid;
     await updateDoc(doc(db, "users", uid), user_settings);
+    // ✅ Safe to use uid here
+  } else {
+    // User is signed out
+    console.log("No user is signed in");
+    return;
+  }
+});
+   
+    
     setLoading(false)
     navigate('/dashboard');
   };
