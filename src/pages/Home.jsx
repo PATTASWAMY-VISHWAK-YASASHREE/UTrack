@@ -39,8 +39,9 @@ const SpendingCard = ({ title, spent, budget, color, percentage }) => (
   <div className="bg-gray-800 p-4 rounded-lg flex-1 min-w-[140px]">
     <h3 className="text-white text-sm mb-3">{title}</h3>
     <div className="flex items-center justify-between">
-      <div>
-        <div className="text-white text-lg font-semibold">{spent}</div>
+      <div className="mr-1">
+        <div className="text-white text-sm font-semibold">{spent}</div>
+        <hr className="border-white opacity-100 my-0" />
         <div className="text-gray-400 text-sm">{budget}</div>
       </div>
       <CircularProgress percentage={percentage} color={color} />
