@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CustomSpinner from '../components/CustomSpinner'
-import {db} from '../firebase'
+import {auth,db} from '../firebase'
 import { doc, updateDoc } from "firebase/firestore";
 
 const SetupGuide = () => {
@@ -40,7 +40,8 @@ const SetupGuide = () => {
     }
     setBudgetError('');
     setLoading(true)
-    const uid=JSON.parse(localStorage.getItem("user"))["uid"];
+
+    const uid=auth.currentUser.uid
     const user_settings={ "usersettings":  {"currency":selectedCurrency,"montly_budget":budget}}
     await updateDoc(doc(db, "users", uid), user_settings);
     setLoading(false)

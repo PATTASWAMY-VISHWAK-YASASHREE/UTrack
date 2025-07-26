@@ -2,8 +2,8 @@ import React from 'react';
 import BottomNav from '../components/BottomNav';
 import './PageStyles.css';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase'; 
-import { getAuth } from 'firebase/auth';
+import { auth,db } from '../firebase'; 
+
 import { useEffect, useState } from 'react';
 
 const CircularProgress = ({ percentage, color }) => {
@@ -88,7 +88,8 @@ const Home = () => {
 
   useEffect(() => {
     const fetchUserData = async () => {
-      const auth = getAuth();
+      const userid=auth.currentUser;
+      console.log(userid.uid)
       const user = JSON.parse(localStorage.getItem("user"))['uid'];
       
       
@@ -124,8 +125,8 @@ const Home = () => {
   
   const data = {
     month: { spent: 12000, budget: budget, percentage: 80 },
-    week: { spent: 3000, budget: (budget)/4, percentage: 75 },
-    day: { spent: 500, budget: (budget)/30, percentage: 50 },
+    week: { spent: 3000, budget: parseInt((budget)/4), percentage: 75 },
+    day: { spent: 500, budget: parseInt((budget)/30), percentage: 50 },
     overall:{spent:12000,budget:budget,percentage:90}
   };
   console.log(budgetObject)
