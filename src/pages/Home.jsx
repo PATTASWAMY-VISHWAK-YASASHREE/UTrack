@@ -53,37 +53,64 @@ const SpendingCard = ({ title, spent, budget, color, percentage }) => (
   </div>
 );
 
-const ReceiptItem = ({ amount, type }) => (
-  <div className="bg-gray-700 p-4 rounded-lg flex-1 min-w-[80px] max-w-[100px]">
-    <div className="w-full h-12 bg-gray-600 rounded mb-2 flex items-center justify-center">
-      <div className="w-6 h-6 border-2 border-gray-400 rounded"></div>
+const ReceiptItem = ({ is_reciept, amount, type }) => {
+  if (is_reciept) {
+    return (
+      <div className="bg-gray-700 p-4 rounded-lg flex-1 min-w-[80px] max-w-[100px]">
+        <div className="w-full h-12 bg-gray-600 rounded mb-2 flex items-center justify-center">
+          <div className="w-6 h-6 border-2 border-gray-400 rounded"></div>
+        </div>
+        <div className="text-xs text-gray-400 mb-1">You spend</div>
+        <div className={`text-sm font-semibold ${type === 'expense' ? 'text-red-400' : 'text-green-400'}`}>
+          {amount}
+        </div>
+      </div>
+    );
+  } else {
+    return (
+      <div className="bg-gray-800 text-white p-4 rounded-lg text-center shadow-md max-w-xs mx-auto">
+      <p className="text-lg font-semibold mb-2">No receipts added yet</p>
+      <p className="text-sm text-gray-400">
+        Use our <span className="text-blue-400 font-medium">advanced receipt scanning</span> tool to get started!
+      </p>
     </div>
-    <div className="text-xs text-gray-400 mb-1">You spend</div>
-    <div className={`text-sm font-semibold ${type === 'expense' ? 'text-red-400' : 'text-green-400'}`}>
-      {amount}
-    </div>
-  </div>
-);
+    );
+  }
+};
 
-const ChatItem = ({ title, description}) => (
-  <div className="bg-gray-800 p-4 rounded-lg mb-3">
-    <div className="flex items-start justify-between">
-      <div className="flex-1">
-        <h4 className="text-white font-medium mb-1">{title}</h4>
-        <p className="text-gray-400 text-sm leading-relaxed">{description}</p>
+const ChatItem = ({ is_chat,title, description}) =>
+  {
+    if(is_chat){
+      return(
+        <div className="bg-gray-800 p-4 rounded-lg mb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <h4 className="text-white font-medium mb-1">{title}</h4>
+            <p className="text-gray-400 text-sm leading-relaxed">{description}</p>
+          </div>
+          <div className="ml-3 text-gray-400">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </div>
+        </div>
       </div>
-      <div className="ml-3 text-gray-400">
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-      </div>
+      );
+    } else{
+      return (
+        <div className="bg-gray-800 text-white p-4 rounded-lg text-center shadow-md max-w-xs mx-auto">
+      <p className="text-lg font-semibold mb-2">No Chat Logs</p>
+      <p className="text-sm text-gray-400">
+        Use our <span className="text-blue-400 font-medium">advanced AI-budget-planner</span> tool to get started!
+      </p>
     </div>
-  </div>
-);
+      );
+    }
+  } 
 
 
 const Home = () => {
-  const percentages = [20, 30, 40,80];
+ 
   const [userData, setUserData] = useState(null);
 
   useEffect(() => {
@@ -112,7 +139,12 @@ const Home = () => {
 
     fetchUserData();
   }, []);
+
+
   const budget=userData?.usersettings?.montly_budget
+
+  const recieptsData=userData?.reciepts!=null;
+  const chatData=userData?.chatLogs!=null;
   const budgetObject={
     month:budget,
     week:(budget)/4,
@@ -131,10 +163,15 @@ const Home = () => {
       <div className="min-h-screen bg-black text-white">
       <div className="container mx-auto px-4 py-6 max-w-6xl">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-lg font-medium">Track your spending's,{userData?.userdetails?.name}</h1>
+       {/* Header with Logo */}
+       <div className="flex items-center justify-start p-6 pt-6">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+            <div className="w-4 h-4 bg-black rounded-full"></div>
+          </div>
+          <span className="text-xl text-white font-semibold">UTrack</span>
         </div>
-
+      </div>
         {/* Spending Overview */}
         <div className="mb-8">
   <div className="flex flex-wrap gap-4">
@@ -159,10 +196,7 @@ const Home = () => {
             </button>
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2  hide-scrollbar">
-            <ReceiptItem amount="250/-" type="expense" />
-            <ReceiptItem amount="600/-" type="income" />
-            <ReceiptItem amount="150/-" type="expense" />
-            <ReceiptItem amount="300/-" type="income" />
+            <ReceiptItem is_reciept={recieptsData} amount="250/-" type="expense" />
           </div>
         </div>
 
@@ -176,18 +210,9 @@ const Home = () => {
           </div>
           <div>
             <ChatItem
+              is_chat={chatData}
               title="Food & Delivery"
               description="You spent ₹2,350 on food delivery this week 🍕 — that's 15% more than last week. Want to set a weekly limit?"
-              
-            />
-            <ChatItem
-              title="Travel Expenses"
-              description="₹6,100 went into fuel and cab rides this month 🚗. You've been traveling more than usual. Shall I suggest budget tips?"
-              
-            />
-            <ChatItem
-              title="Subscriptions"
-              description="You spent ₹1,250 in subscriptions this month 💳 — Netflix, Spotify, and 3 others. Want a reminder before they renew?"
               
             />
           </div>
