@@ -53,30 +53,21 @@ const SpendingCard = ({ title, spent, budget, color, percentage }) => (
   </div>
 );
 
-const ReceiptItem = ({ is_reciept, amount, type }) => {
-  if (is_reciept) {
-    return (
+const ReceiptItem = ({ amount, type }) => (
+ 
       <div className="bg-gray-700 p-4 rounded-lg flex-1 min-w-[80px] max-w-[100px]">
         <div className="w-full h-12 bg-gray-600 rounded mb-2 flex items-center justify-center">
           <div className="w-6 h-6 border-2 border-gray-400 rounded"></div>
         </div>
-        <div className="text-xs text-gray-400 mb-1">You spend</div>
+        <div className="text-xs text-gray-200 mb-1">
+          <p>You spend</p></div>
         <div className={`text-sm font-semibold ${type === 'expense' ? 'text-red-400' : 'text-green-400'}`}>
-          {amount}
+          {amount.total_amount}
         </div>
       </div>
-    );
-  } else {
-    return (
-      <div className="bg-gray-800 text-white p-4 rounded-lg text-center shadow-md max-w-xs mx-auto">
-      <p className="text-lg font-semibold mb-2">No receipts added yet</p>
-      <p className="text-sm text-gray-400">
-        Use our <span className="text-blue-400 font-medium">advanced receipt scanning</span> tool to get started!
-      </p>
-    </div>
-    );
-  }
-};
+    
+ 
+);
 
 const ChatItem = ({ is_chat,title, description}) =>
   {
@@ -112,6 +103,7 @@ const ChatItem = ({ is_chat,title, description}) =>
 const Home = () => {
  
   const [userData, setUserData] = useState(null);
+  const [userBills,setUserBills]=useState(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -143,14 +135,18 @@ const Home = () => {
 
   const budget=userData?.usersettings?.montly_budget
 
-  const recieptsData=userData?.reciepts!=null;
+  const recieptsData=userData?.user_bills!=null;
+  const userbill=userData?.user_bills[0]
+  
+
+  
   const chatData=userData?.chatLogs!=null;
   const budgetObject={
     month:budget,
     week:(budget)/4,
     day:(budget)/30
   }
-  
+
   const data = {
     month: { spent: 12000, budget: budget, percentage: 80 },
     week: { spent: 3000, budget: parseInt((budget)/4), percentage: 75 },
@@ -195,8 +191,19 @@ const Home = () => {
               view all
             </button>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-2  hide-scrollbar">
-            <ReceiptItem is_reciept={recieptsData} amount="250/-" type="expense" />
+          <div className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar">
+            {Array.isArray(userData?.user_bills) && userData.user_bills.length > 0 ? (
+              userData.user_bills.map((bill, index) => (
+                <ReceiptItem key={index} amount={bill} type="expense" />
+              ))
+            ) : (
+              <div className="bg-gray-800 text-white p-4 rounded-lg text-center shadow-md max-w-xs mx-auto">
+              <p className="text-lg font-semibold mb-2">No receipts added yet</p>
+              <p className="text-sm text-gray-400">
+                Use our <span className="text-blue-400 font-medium">advanced receipt scanning</span> tool to get started!
+              </p>
+    </div>
+            )}
           </div>
         </div>
 
