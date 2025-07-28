@@ -3,7 +3,7 @@ import BottomNav from '../components/BottomNav';
 import './PageStyles.css';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth,db } from '../firebase'; 
-
+import  SkeletonLayout from "../components/SkeletonLayout"
 import { useEffect, useState } from 'react';
 
 const CircularProgress = ({ percentage, color }) => {
@@ -105,7 +105,7 @@ const Home = () => {
   const [userData, setUserData] = useState(null);
   const [userBills,setUserBills]=useState(null);
   const [htmlData,setHtmlData]=useState(null);
-
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     const fetchUserData = async () => {
       const user=auth.currentUser;
@@ -118,8 +118,9 @@ const Home = () => {
       try {
         const userRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(userRef);
-
+        
         if (docSnap.exists()) {
+          setLoading(false);
           setUserData(docSnap.data());
           console.log("retrived successfully")
         } else {
@@ -173,6 +174,7 @@ const Home = () => {
     overall:{spent:parseInt(value),budget:budget,percentage:90}
   };
   console.log(budgetObject)
+  if (loading) return <SkeletonLayout />;
   return (
     <div>
       <div className="min-h-screen bg-black text-white">

@@ -139,9 +139,7 @@ const Ask = () => {
   }, [chats]);
 
   // Console log the chats for debugging
-  useEffect(() => {
-    console.log('Current chat messages:', chats);
-  }, [chats]);
+
 
   return (
     <div className="page ask-page">
