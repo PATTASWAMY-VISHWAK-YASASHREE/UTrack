@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import CustomSpinner from '../components/CustomSpinner'
@@ -14,6 +14,7 @@ const SetupGuide = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [uid, setUid] = useState(null);
 
   const currencies = [
     { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
@@ -32,6 +33,27 @@ const SetupGuide = () => {
     setCurrentStep(2);
   };
 
+  useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
+    if (user) {
+      setUid(user.uid);
+    } else {
+      console.log("No user logged in");
+    }
+  });
+
+  return () => unsubscribe();
+}, []); // ✅ Runs once when component mounts
+
+// 🧠 Optional: do something when uid is ready
+useEffect(() => {
+  if (uid) {
+    console.log("UID available:", uid);
+    // fetch data, navigate, etc.
+  }
+}, [uid]); // ✅ runs when uid changes
+
+
   const handleStep2Next = async() => {
     const budget = parseFloat(monthlyBudget);
     if (!monthlyBudget || budget <= 0) {
@@ -41,20 +63,7 @@ const SetupGuide = () => {
     setBudgetError('');
     setLoading(true)
     const user_settings={ "usersettings":  {"currency":selectedCurrency,"montly_budget":budget},"user_bills":[]}
-    onAuthStateChanged(auth, async(user) => {
-  if (user) {
-    const uid = user.uid;
-    console.log(uid)
     await updateDoc(doc(db, "users", uid), user_settings);
-    // ✅ Safe to use uid here
-  } else {
-    // User is signed out
-    console.log("No user is signed in");
-    return;
-  }
-});
-   
-    
     setLoading(false)
     navigate('/dashboard');
   };

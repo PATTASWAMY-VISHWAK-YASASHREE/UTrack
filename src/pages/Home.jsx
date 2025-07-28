@@ -5,6 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth,db } from '../firebase'; 
 import  SkeletonLayout from "../components/SkeletonLayout"
 import { useEffect, useState } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const CircularProgress = ({ percentage, color }) => {
   const radius = 18;
@@ -107,32 +108,29 @@ const Home = () => {
   const [htmlData,setHtmlData]=useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    const fetchUserData = async () => {
-      const user=auth.currentUser;
-
-      if (!user) {
-        console.log("No user logged in");
-        return;
-      }
-
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (user) {
       try {
         const userRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(userRef);
-        
+
         if (docSnap.exists()) {
-          setLoading(false);
           setUserData(docSnap.data());
-          console.log("retrived successfully")
+          setLoading(false);
+          console.log("retrieved successfully");
         } else {
           console.log("No user data found in Firestore");
         }
       } catch (err) {
         console.error("Error fetching user data:", err);
       }
-    };
+    } else {
+      console.log("No user logged in");
+    }
+  });
 
-    fetchUserData();
-  }, []);
+  return () => unsubscribe();
+}, []);
 
 
   const budget=userData?.usersettings?.montly_budget
