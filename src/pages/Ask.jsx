@@ -92,39 +92,37 @@ const Ask = () => {
 
 
   const handleSendMessage = async () => {
-    if (inputValue.trim() === '') return;
-    const Response= await getData(inputValue.trim())
-    
-    const userMessage = { user: inputValue.trim(), chatbot: Response };
-    const newChats = [...chats, userMessage];
-    setChats(newChats);
-    
-    // Update the current chat in allChats
-    const updatedAllChats = [...allChats];
-    updatedAllChats[currentChatIndex] = newChats;
-    setAllChats(updatedAllChats);
-    
-    setInputValue('');
+  const trimmedMessage = inputValue.trim();
+  if (trimmedMessage === '') return;
 
-    // Simulate chatbot response with typing animation
-      const botResponse = "Hey, how can I help you?";
-      let typingMessage = { user: userMessage.user, chatbot: '' };
-      
-      const updatedChatsWithBot = [...newChats.slice(0, -1), typingMessage];
-      setChats(updatedChatsWithBot);
-      
-      simulateTyping(Response, (currentText) => {
-        const updatedTypingMessage = { user: userMessage.user, chatbot: currentText };
-        const updatedChatsWithTyping = [...newChats.slice(0, -1), updatedTypingMessage];
-        setChats(updatedChatsWithTyping);
-        
-        // Update allChats as well
-        const updatedAllChatsWithTyping = [...allChats];
-        updatedAllChatsWithTyping[currentChatIndex] = updatedChatsWithTyping;
-        setAllChats(updatedAllChatsWithTyping);
-      });
-   
-  };
+  // Step 1: Show user message instantly
+  const userMessage = { user: trimmedMessage, chatbot: null };
+  const newChats = [...chats, userMessage];
+  setChats(newChats);
+
+  // Step 2: Clear input and set typing state
+  setInputValue('');
+  setIsTyping(true);
+
+  // Step 3: Update allChats state for current chat index
+  const updatedAllChats = [...allChats];
+  updatedAllChats[currentChatIndex] = newChats;
+  setAllChats(updatedAllChats);
+
+  // Step 4: Fetch API response
+  const response = await getData(trimmedMessage);
+
+  // Step 5: Replace the last message with the bot response
+  const updatedLastMessage = { ...userMessage, chatbot: response };
+  const updatedChats = [...newChats.slice(0, -1), updatedLastMessage];
+  setChats(updatedChats);
+  setIsTyping(false);
+
+  // Step 6: Update allChats again
+  const updatedAllChatsWithResponse = [...updatedAllChats];
+  updatedAllChatsWithResponse[currentChatIndex] = updatedChats;
+  setAllChats(updatedAllChatsWithResponse);
+};
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
