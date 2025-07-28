@@ -138,7 +138,11 @@ const Home = () => {
 
   const recieptsData=userData?.user_bills!=null;
   const userBill=userData?.user_bills;
+  let value=0;
   console.log(userBill)
+  if(recieptsData){
+    value=calculateTotalSpending(userData?.user_bills)
+  }
   function calculateTotalSpending(userbill) {
     return userbill.reduce((sum, bill) => {
       const amount = bill["json"].total_amount;
@@ -153,7 +157,7 @@ const Home = () => {
       return sum;
     }, 0);
   }
-  const value=calculateTotalSpending(userBill)
+  
   console.log(value)
   const chatData=userData?.chatLogs!=null;
   const budgetObject={
