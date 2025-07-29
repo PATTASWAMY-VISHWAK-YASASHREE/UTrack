@@ -90,7 +90,7 @@ const Ask = () => {
     if (!message) return "No message provided";
   
     try {
-      const res = await fetch('https://bill-assist.onrender.com/chat', {
+      const res = await fetch('https://bill-assistant-1.onrender.com/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
