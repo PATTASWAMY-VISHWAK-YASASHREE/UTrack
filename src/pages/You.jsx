@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { auth, db } from '../firebase'; // Make sure this path is correct
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import BottomNav from '../components/BottomNav'; // Adjust this import as needed
+import BottomNav from '../components/BottomNav'; 
+import  SkeletonLayout from "../components/SkeletonLayout"
 
 const You = () => {
   const [userData, setUserData] = useState(null);
@@ -48,7 +49,7 @@ const You = () => {
     signOut(auth);
   };
 
-  if (!userData) return <div className="text-white p-4">Loading...</div>;
+  if (!userData) return <SkeletonLayout/>
 
   return (
     <div className="min-h-screen bg-black pb-20">
