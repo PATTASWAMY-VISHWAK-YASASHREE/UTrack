@@ -5,8 +5,7 @@ import './PageStyles.css';
 const Alerts = () => {
   return (
     <div className="page alerts-page">
-      <div className="header">Alerts</div>
-      <div className="placeholder-center">No alerts yet.</div>
+      <h2 className="text-white d-flex flex-row justify-content-center align-center text-bold">No Alerts</h2>
       <BottomNav />
     </div>
   );

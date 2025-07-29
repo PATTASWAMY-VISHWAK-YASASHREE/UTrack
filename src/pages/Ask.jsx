@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import BottomNav from '../components/BottomNav';
 import './AskStyles.css';
 import {auth} from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 const Ask = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -11,7 +12,9 @@ const Ask = () => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const chatContainerRef = useRef(null);
+  const [username,setUserName]=useState(null);
   const uid=auth.currentUser.uid;
+  console.log(username)
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
@@ -186,7 +189,7 @@ const Ask = () => {
         <div className="chat-container" ref={chatContainerRef}>
           {chats.length === 0 ? (
             <div className="welcome-screen">
-              <h1>Hey vara!</h1>
+              <h1>Hey!</h1>
               <p>Ask me anything about your money — I'm listening.</p>
             </div>
           ) : (
