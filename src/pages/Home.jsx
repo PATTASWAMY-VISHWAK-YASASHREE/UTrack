@@ -54,21 +54,21 @@ const SpendingCard = ({ title, spent, budget, color, percentage }) => (
   </div>
 );
 
-const ReceiptItem = ({ amount, type }) => (
- 
+const ReceiptItem = ({ amount, type, onViewClick }) => (
   <div className="bg-gray-700 p-4 rounded-lg flex flex-col items-center justify-between min-w-[80px] max-w-[100px]">
-  <div className="text-xs text-gray-200 mb-1 whitespace-nowrap">You spend</div>
-  <div className={`text-sm font-semibold mb-2 ${type === 'expense' ? 'text-red-400' : 'text-green-400'}`}>
-    {amount.total_amount}
+    <div className="text-xs text-gray-200 mb-1 whitespace-nowrap">You spend</div>
+    <div className={`text-sm font-semibold mb-2 ${type === 'expense' ? 'text-red-400' : 'text-green-400'}`}>
+      {amount.total_amount}
+    </div>
+    <button
+      onClick={onViewClick}
+      className="bg-blue-500 text-white text-xs px-3 py-1 rounded hover:bg-blue-600 transition"
+    >
+      View
+    </button>
   </div>
-  <button className="bg-blue-500 text-white text-xs px-3 py-1 rounded hover:bg-blue-600 transition">
-    View
-  </button>
-</div>
-
-    
- 
 );
+
 
 const ChatItem = ({ is_chat,title, description}) =>
   {
@@ -107,13 +107,15 @@ const Home = () => {
   const [userBills,setUserBills]=useState(null);
   const [htmlData,setHtmlData]=useState(null);
   const [loading, setLoading] = useState(true);
+   const [modalHtml, setModalHtml] = useState(null);
+  
   useEffect(() => {
   const unsubscribe = onAuthStateChanged(auth, async (user) => {
     if (user) {
       try {
         const userRef = doc(db, 'users', user.uid);
         const docSnap = await getDoc(userRef);
-
+        
         if (docSnap.exists()) {
           setUserData(docSnap.data());
           setLoading(false);
@@ -132,7 +134,13 @@ const Home = () => {
   return () => unsubscribe();
 }, []);
 
+ const openModal = (htmlContent) => {
+    setModalHtml(htmlContent);
+  };
 
+  const closeModal = () => {
+    setModalHtml(null);
+  };
   const budget=userData?.usersettings?.montly_budget
 
   const recieptsData=userData?.user_bills!=null;
@@ -285,7 +293,7 @@ console.log({ total, today, week, month });
           <div className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar">
             {Array.isArray(userData?.user_bills) && userData.user_bills.length > 0 ? (
               userData.user_bills.map((bill, index) => (
-                <ReceiptItem key={index} amount={bill["json"]} type="expense" />
+                <ReceiptItem key={index} amount={bill["json"]} type="expense" onViewClick={() => openModal(bill["html"])}/>
               ))
             ) : (
               <div className="bg-gray-800 text-white p-4 rounded-lg text-center shadow-md max-w-xs mx-auto">
@@ -297,6 +305,20 @@ console.log({ total, today, week, month });
             )}
           </div>
         </div>
+          {/* Modal */}
+      {modalHtml && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center px-4">
+          <div className="bg-black rounded-lg max-w-full max-h-[90vh] overflow-auto relative p-6 shadow-lg">
+            <button
+              onClick={closeModal}
+              className="absolute top-2 right-2 text-white text-xl font-bold"
+            >
+              &times;
+            </button>
+            <div dangerouslySetInnerHTML={{ __html: modalHtml }} />
+          </div>
+        </div>
+      )}
 
         {/* Recent Chat */}
         <div>
