@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import BottomNav from '../components/BottomNav';
-import './PageStyles.css';
+import './PageStyles.css'; // Ensure this exists and supports global styles
 
 const Alerts = () => {
   const razorpayContainerRef = useRef(null);
@@ -12,12 +12,11 @@ const Alerts = () => {
     script.async = true;
 
     if (razorpayContainerRef.current) {
-      razorpayContainerRef.current.innerHTML = ''; // Clear if re-rendered
+      razorpayContainerRef.current.innerHTML = '';
       razorpayContainerRef.current.appendChild(script);
     }
 
     return () => {
-      // Cleanup if component unmounts
       if (razorpayContainerRef.current) {
         razorpayContainerRef.current.innerHTML = '';
       }
@@ -26,13 +25,10 @@ const Alerts = () => {
 
   return (
     <div className="page alerts-page">
-      <h2 className="text-white d-flex flex-row justify-content-center align-center text-bold">
-        Pay with UTrack
-      </h2>
-
-      {/* Razorpay Payment Button mounts here */}
-      <div ref={razorpayContainerRef}></div>
-
+      <div className="centered-container">
+        <h2 className="payment-heading">Pay with UTrack</h2>
+        <div ref={razorpayContainerRef}></div>
+      </div>
       <BottomNav />
     </div>
   );
