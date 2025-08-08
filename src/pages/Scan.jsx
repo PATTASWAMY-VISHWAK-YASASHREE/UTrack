@@ -215,7 +215,7 @@ const Scan = () => {
         </>
       )}
       
-      <BottomNav />
+      
     </div>
   );
 };

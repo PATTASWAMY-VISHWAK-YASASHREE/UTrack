@@ -10,16 +10,23 @@ import LandingPage from './pages/LandingPage.jsx';
 import Login from './pages/Login.jsx';
 import SignUp from './pages/SignUp.jsx';
 import SetUp from './pages/SetUp.jsx';
+import MainLayout from './components/MainLayout.jsx';
 
 function App() {
   return (
     <Routes>
-      <Route path="/dashboard" element={<Home />} />
-      <Route path="/chat" element={<Ask />} />
+       <Route element={<MainLayout />}>
+         <Route path="/dashboard" element={<Home />} />
+         <Route path="/chat" element={<Ask />} />
       <Route path="/scan" element={<Scan />} />
       <Route path="/scan-result" element={<ScanResult />} />
       <Route path="/alerts" element={<Alerts />} />
       <Route path="/profile" element={<You />} />
+       </Route>
+     
+      
+      
+      
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />

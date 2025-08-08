@@ -4,6 +4,7 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import BottomNav from '../components/BottomNav'; 
 import  SkeletonLayout from "../components/SkeletonLayout"
+import { useNavigate } from 'react-router-dom';
 
 const You = () => {
   const [userData, setUserData] = useState(null);
@@ -11,6 +12,7 @@ const You = () => {
   const [editMode, setEditMode] = useState({ currency: false, budget: false });
   const [newCurrency, setNewCurrency] = useState('');
   const [newBudget, setNewBudget] = useState('');
+  const navigate=useNavigate();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -47,6 +49,8 @@ const You = () => {
 
   const handleLogout = () => {
     signOut(auth);
+    navigate('/')
+
   };
 
   if (!userData) return <SkeletonLayout/>
@@ -151,7 +155,7 @@ const You = () => {
 
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 z-40">
-        <BottomNav />
+        
       </div>
     </div>
   );

@@ -301,7 +301,7 @@ console.log(allChats)
         </div>
       </div>
 
-      <BottomNav />
+      
     </div>
   );
 };
