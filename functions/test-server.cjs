@@ -54,6 +54,26 @@ async function createPaymentOrder(req, res) {
 
         req.on('end', async () => {
             try {
+                // Handle GET requests differently
+                if (req.method === 'GET') {
+                    res.writeHead(405, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        success: false,
+                        error: 'Method not allowed. Use POST with JSON body.'
+                    }));
+                    return;
+                }
+
+                // Only parse JSON for POST requests with body
+                if (!body) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        success: false,
+                        error: 'Request body is required'
+                    }));
+                    return;
+                }
+
                 const { amount, currency, receipt, description, userId } = JSON.parse(body);
 
                 if (!amount || !currency || !userId) {

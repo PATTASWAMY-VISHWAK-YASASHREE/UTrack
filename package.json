@@ -16,7 +16,11 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:all": "start \"Firebase Emulators\" cmd /k \"cd functions && firebase emulators:start\" && timeout /t 5 /nobreak > nul && start \"Vite Dev\" cmd /k \"npm run dev\" && start \"Test Server\" cmd /k \"cd functions && node test-server.cjs\" && start \"Payment Test\" cmd /k \"cd functions && node test-payment-functions.cjs\"",
+    "deploy:functions": "cd functions && firebase deploy --only functions",
+    "start:emulators": "cd functions && firebase emulators:start",
+    "test:functions": "cd functions && node test-payment-functions.cjs"
   },
   "dependencies": {
     "firebase": "^12.0.0",
@@ -32,6 +36,7 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "autoprefixer": "^10.4.20",
+    "concurrently": "^8.2.2",
     "eslint": "^9.30.1",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",

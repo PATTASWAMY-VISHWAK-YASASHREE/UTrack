@@ -11,6 +11,7 @@ import Login from './pages/Login.jsx';
 import SignUp from './pages/SignUp.jsx';
 import SetUp from './pages/SetUp.jsx';
 import PaymentDemoPage from './pages/PaymentDemoPage.jsx';
+import PaymentSuccess from './pages/PaymentSuccess.jsx';
 import MainLayout from './components/MainLayout.jsx';
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
       <Route path="/signup" element={<SignUp />} />
       <Route path="/setup" element={<SetUp />} />
       <Route path="/payment-demo" element={<PaymentDemoPage />} />
+      <Route path="/payment-success" element={<PaymentSuccess />} />
     </Routes>
   )
 }

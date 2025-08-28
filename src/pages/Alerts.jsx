@@ -3,6 +3,14 @@ import { auth, db } from '../firebase';
 import { doc, addDoc, collection, updateDoc, arrayUnion } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import BottomNav from '../components/BottomNav';
+import { 
+  initiatePayment, 
+  createPaymentOrder,
+  verifyPayment, 
+  loadRazorpayScript, 
+  validatePaymentData,
+  formatAmount 
+} from '../utils/paymentUtils';
 import './PageStyles.css';
 import './Alerts.css';
 
@@ -44,26 +52,25 @@ const Alerts = () => {
       }
     });
 
-    // Initialize Razorpay embed button
-    const initRazorpayEmbed = () => {
-      if (!document.getElementById('razorpay-embed-btn-js')) {
-        const script = document.createElement('script');
-        script.defer = true;
-        script.id = 'razorpay-embed-btn-js';
-        script.src = 'https://cdn.razorpay.com/static/embed_btn/bundle.js';
-        document.body.appendChild(script);
-      } else {
-        // If script already exists, reinitialize
-        const rzp = window['__rzp__'];
-        if (rzp && rzp.init) {
-          rzp.init();
-        }
+    // Load Razorpay script
+    loadRazorpayScript().then((loaded) => {
+      if (!loaded) {
+        console.error('Failed to load Razorpay script');
       }
+    });
+
+    // Set up global payment handlers
+    window.onPaymentSuccess = handlePaymentSuccess;
+    window.onPaymentError = handlePaymentError;
+    window.onPaymentCancel = handlePaymentCancel;
+
+    return () => {
+      unsubscribe();
+      // Clean up global handlers
+      delete window.onPaymentSuccess;
+      delete window.onPaymentError;
+      delete window.onPaymentCancel;
     };
-
-    initRazorpayEmbed();
-
-    return () => unsubscribe();
   }, []);
 
   const handleInputChange = (e) => {
@@ -74,21 +81,12 @@ const Alerts = () => {
     }));
   };
 
-  const validatePaymentData = () => {
+  const validatePaymentForm = () => {
     const { amount, currency, email } = paymentData;
     
-    if (!amount || parseFloat(amount) <= 0) {
-      alert('Please enter a valid amount');
-      return false;
-    }
-    
-    if (!currency) {
-      alert('Please select a currency');
-      return false;
-    }
-    
-    if (!email) {
-      alert('Email is required');
+    const validation = validatePaymentData(amount, email, currency);
+    if (!validation.isValid) {
+      alert('Validation failed:\n' + validation.errors.join('\n'));
       return false;
     }
 
@@ -96,140 +94,96 @@ const Alerts = () => {
   };
 
   const createRazorpayOrder = async () => {
-    if (!validatePaymentData()) return;
+    if (!validatePaymentForm()) return;
+    if (!user) {
+      alert('Please log in to make a payment');
+      return;
+    }
 
     setLoading(true);
     try {
-      // For demo purposes, create a local order object
-      // In production, replace this with actual API call to your Firebase Function
-      const order = {
-        id: `order_${Date.now()}`,
-        amount: parseFloat(paymentData.amount) * 100, // Convert to paise/cents
-        currency: paymentData.currency,
-        receipt: `receipt_${Date.now()}`,
-        status: 'created'
-      };
-
-      // TODO: Replace with actual API call when backend is deployed
-      const response = await fetch('http://127.0.0.1:5001/utrack-d3efb/us-central1/createPaymentOrder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: parseFloat(paymentData.amount) * 100,
-          currency: paymentData.currency,
-          receipt: `receipt_${Date.now()}`,
-          description: paymentData.description,
-          userId: user.uid
-        })
-      });
-      const orderData = await response.json();
-      if (orderData.success) {
-        initiateRazorpayPayment(orderData.order);
-      } else {
-        throw new Error(orderData.error || 'Failed to create payment order');
-      }
-
-      initiateRazorpayPayment(order);
-    } catch (error) {
-      console.error('Error creating order:', error);
-      alert('Failed to create payment order. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const initiateRazorpayPayment = (order) => {
-    const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-      amount: order.amount,
-      currency: order.currency,
-      name: 'UTrack Payment',
-      description: paymentData.description || 'Payment via UTrack',
-      order_id: order.id,
-      handler: async (response) => {
-        await handlePaymentSuccess(response, order);
-      },
-      prefill: {
+      // Use the new createPaymentOrder function
+      const result = await createPaymentOrder({
+        amount: parseFloat(paymentData.amount),
+        userId: user.uid,
+        description: paymentData.description,
         name: user.displayName || '',
         email: paymentData.email,
         contact: paymentData.contact
-      },
-      theme: {
-        color: '#007bff'
-      },
-      modal: {
-        ondismiss: () => {
-          setLoading(false);
-          setPaymentStatus({
-            status: 'cancelled',
-            message: 'Payment was cancelled'
-          });
-        }
-      }
-    };
-
-    const rzp = new window.Razorpay(options);
-    rzp.open();
-  };
-
-  const handlePaymentSuccess = async (paymentResponse, order) => {
-    try {
-      setLoading(true);
-      
-      // For demo purposes, simulate successful verification
-      // In production, replace this with actual API call to verify payment
-      console.log('Payment Response:', paymentResponse);
-      console.log('Order:', order);
-
-      // TODO: Replace with actual API call when backend is deployed
-      const verificationResponse = await fetch('http://127.0.0.1:5001/utrack-d3efb/us-central1/verifyPayment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          razorpay_order_id: paymentResponse.razorpay_order_id,
-          razorpay_payment_id: paymentResponse.razorpay_payment_id,
-          razorpay_signature: paymentResponse.razorpay_signature,
-          userId: user.uid
-        })
       });
-      const verificationData = await verificationResponse.json();
 
-      if (verificationData.success) {
-        // Payment verified successfully
-        const mockPaymentDetails = {
-          id: paymentResponse.razorpay_payment_id,
-          status: 'captured',
-          amount: order.amount,
-          currency: order.currency
-        };
-
-        // Store transaction in Firestore
-        await storeTransaction({
-          ...paymentResponse,
-          order_id: order.id,
-          amount: order.amount / 100,
-          currency: order.currency,
-          status: 'completed',
-          userId: user.uid,
-          timestamp: new Date().toISOString(),
-          description: paymentData.description
-        });
-
-        setPaymentStatus({
-          status: 'success',
-          message: 'Payment completed successfully!',
-          details: mockPaymentDetails
-        });
+      if (!result.success) {
+        throw new Error(result.error);
       }
+
     } catch (error) {
-      console.error('Payment verification error:', error);
+      console.error('Error creating order:', error);
       setPaymentStatus({
         status: 'error',
-        message: 'Payment verification failed. Please contact support.'
+        message: 'Failed to create payment order: ' + error.message
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  // Global payment success handler
+  const handlePaymentSuccess = async (verificationData, paymentResponse) => {
+    try {
+      setLoading(false);
+      
+      console.log('Payment verified successfully:', verificationData);
+      
+      // Store transaction in Firestore
+      await storeTransaction({
+        payment_id: paymentResponse.razorpay_payment_id,
+        order_id: paymentResponse.razorpay_order_id,
+        signature: paymentResponse.razorpay_signature,
+        amount: parseFloat(paymentData.amount),
+        currency: paymentData.currency,
+        status: 'completed',
+        userId: user.uid,
+        timestamp: new Date().toISOString(),
+        description: paymentData.description,
+        verificationData: verificationData
+      });
+
+      setPaymentStatus({
+        status: 'success',
+        message: 'Payment completed successfully!',
+        details: {
+          id: paymentResponse.razorpay_payment_id,
+          status: 'captured',
+          amount: parseFloat(paymentData.amount),
+          currency: paymentData.currency
+        }
+      });
+    } catch (error) {
+      console.error('Error handling successful payment:', error);
+      setPaymentStatus({
+        status: 'error',
+        message: 'Payment was successful but failed to save transaction details.'
+      });
+    }
+  };
+
+  // Global payment error handler
+  const handlePaymentError = (errorMessage, errorDetails) => {
+    setLoading(false);
+    console.error('Payment error:', errorMessage, errorDetails);
+    setPaymentStatus({
+      status: 'error',
+      message: errorMessage
+    });
+  };
+
+  // Global payment cancel handler
+  const handlePaymentCancel = () => {
+    setLoading(false);
+    setPaymentStatus({
+      status: 'cancelled',
+      message: 'Payment was cancelled by user'
+    });
   };
 
   const storeTransaction = async (transactionData) => {
@@ -349,19 +303,8 @@ const Alerts = () => {
               onClick={createRazorpayOrder}
               disabled={loading}
             >
-              {loading ? '⏳ Processing...' : `💳 Pay ${selectedCurrency?.symbol}${paymentData.amount || '0'}`}
+              {loading ? '⏳ Processing...' : `💳 Pay ${formatAmount(paymentData.amount || 0, paymentData.currency)}`}
             </button>
-
-            {/* Razorpay Embed Button */}
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <div
-                className="razorpay-embed-btn"
-                data-url="https://pages.razorpay.com/pl_RAhd21hcpFmXes/view"
-                data-text="Pay Now"
-                data-color="#528FF0"
-                data-size="medium"
-              />
-            </div>
           </div>
         ) : (
           <div className="payment-result-container">
@@ -384,7 +327,7 @@ const Alerts = () => {
                   </tr>
                   <tr>
                     <td>Amount:</td>
-                    <td>{selectedCurrency?.symbol}{paymentData.amount}</td>
+                    <td>{formatAmount(paymentStatus.details.amount, paymentStatus.details.currency)}</td>
                   </tr>
                   <tr>
                     <td>Currency:</td>
