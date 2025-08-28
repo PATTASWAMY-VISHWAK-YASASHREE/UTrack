@@ -5,7 +5,9 @@ const Razorpay = require("razorpay");
 const crypto = require("crypto");
 require("dotenv").config();
 
-admin.initializeApp();
+admin.initializeApp({
+  projectId: 'utrack-d3efb'
+});
 
 const db = admin.firestore();
 

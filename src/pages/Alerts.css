@@ -1,9 +1,18 @@
-/* Enhanced Payment Styles */
+/* Razorpay Embed Button Styles */
+.razorpay-embed-btn {
+    display: inline-block;
+    margin: 10px 0;
+}
 
-.payment-container {
-    max-width: 500px;
-    margin: 0 auto;
-    padding: 20px;
+.razorpay-embed-btn iframe {
+    border-radius: 8px !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+}
+
+.razorpay-embed-btn:hover {
+    transform: translateY(-2px);
+    transition: transform 0.2s ease;
 }
 
 .payment-heading {

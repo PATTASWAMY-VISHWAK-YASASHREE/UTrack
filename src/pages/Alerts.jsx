@@ -44,6 +44,25 @@ const Alerts = () => {
       }
     });
 
+    // Initialize Razorpay embed button
+    const initRazorpayEmbed = () => {
+      if (!document.getElementById('razorpay-embed-btn-js')) {
+        const script = document.createElement('script');
+        script.defer = true;
+        script.id = 'razorpay-embed-btn-js';
+        script.src = 'https://cdn.razorpay.com/static/embed_btn/bundle.js';
+        document.body.appendChild(script);
+      } else {
+        // If script already exists, reinitialize
+        const rzp = window['__rzp__'];
+        if (rzp && rzp.init) {
+          rzp.init();
+        }
+      }
+    };
+
+    initRazorpayEmbed();
+
     return () => unsubscribe();
   }, []);
 
@@ -92,21 +111,23 @@ const Alerts = () => {
       };
 
       // TODO: Replace with actual API call when backend is deployed
-      // const response = await fetch('https://your-region-your-project-id.cloudfunctions.net/createPaymentOrder', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     amount: parseFloat(paymentData.amount) * 100,
-      //     currency: paymentData.currency,
-      //     receipt: `receipt_${Date.now()}`,
-      //     description: paymentData.description,
-      //     userId: user.uid
-      //   })
-      // });
-      // const orderData = await response.json();
-      // if (orderData.success) {
-      //   initiateRazorpayPayment(orderData.order);
-      // }
+      const response = await fetch('http://127.0.0.1:5001/utrack-d3efb/us-central1/createPaymentOrder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: parseFloat(paymentData.amount) * 100,
+          currency: paymentData.currency,
+          receipt: `receipt_${Date.now()}`,
+          description: paymentData.description,
+          userId: user.uid
+        })
+      });
+      const orderData = await response.json();
+      if (orderData.success) {
+        initiateRazorpayPayment(orderData.order);
+      } else {
+        throw new Error(orderData.error || 'Failed to create payment order');
+      }
 
       initiateRazorpayPayment(order);
     } catch (error) {
@@ -161,44 +182,45 @@ const Alerts = () => {
       console.log('Order:', order);
 
       // TODO: Replace with actual API call when backend is deployed
-      // const verificationResponse = await fetch('https://your-region-your-project-id.cloudfunctions.net/verifyPayment', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     razorpay_order_id: paymentResponse.razorpay_order_id,
-      //     razorpay_payment_id: paymentResponse.razorpay_payment_id,
-      //     razorpay_signature: paymentResponse.razorpay_signature,
-      //     userId: user.uid
-      //   })
-      // });
-      // const verificationData = await verificationResponse.json();
-
-      // Simulate verification success for demo
-      const mockPaymentDetails = {
-        id: paymentResponse.razorpay_payment_id,
-        status: 'captured',
-        amount: order.amount,
-        currency: order.currency
-      };
-
-      // Store transaction in Firestore
-      await storeTransaction({
-        ...paymentResponse,
-        order_id: order.id,
-        amount: order.amount / 100,
-        currency: order.currency,
-        status: 'completed',
-        userId: user.uid,
-        timestamp: new Date().toISOString(),
-        description: paymentData.description
+      const verificationResponse = await fetch('http://127.0.0.1:5001/utrack-d3efb/us-central1/verifyPayment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          razorpay_order_id: paymentResponse.razorpay_order_id,
+          razorpay_payment_id: paymentResponse.razorpay_payment_id,
+          razorpay_signature: paymentResponse.razorpay_signature,
+          userId: user.uid
+        })
       });
+      const verificationData = await verificationResponse.json();
 
-      setPaymentStatus({
-        status: 'success',
-        message: 'Payment completed successfully!',
-        details: mockPaymentDetails
-      });
+      if (verificationData.success) {
+        // Payment verified successfully
+        const mockPaymentDetails = {
+          id: paymentResponse.razorpay_payment_id,
+          status: 'captured',
+          amount: order.amount,
+          currency: order.currency
+        };
 
+        // Store transaction in Firestore
+        await storeTransaction({
+          ...paymentResponse,
+          order_id: order.id,
+          amount: order.amount / 100,
+          currency: order.currency,
+          status: 'completed',
+          userId: user.uid,
+          timestamp: new Date().toISOString(),
+          description: paymentData.description
+        });
+
+        setPaymentStatus({
+          status: 'success',
+          message: 'Payment completed successfully!',
+          details: mockPaymentDetails
+        });
+      }
     } catch (error) {
       console.error('Payment verification error:', error);
       setPaymentStatus({
@@ -329,6 +351,17 @@ const Alerts = () => {
             >
               {loading ? '⏳ Processing...' : `💳 Pay ${selectedCurrency?.symbol}${paymentData.amount || '0'}`}
             </button>
+
+            {/* Razorpay Embed Button */}
+            <div style={{ marginTop: '20px', textAlign: 'center' }}>
+              <div
+                className="razorpay-embed-btn"
+                data-url="https://pages.razorpay.com/pl_RAhd21hcpFmXes/view"
+                data-text="Pay Now"
+                data-color="#528FF0"
+                data-size="medium"
+              />
+            </div>
           </div>
         ) : (
           <div className="payment-result-container">
