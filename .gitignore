@@ -32,3 +32,5 @@ firestore.indexes.json
 firebase-debug.log
 ui-debug.log
 .firebase/
+start-all.ps1
+start-all.bat
