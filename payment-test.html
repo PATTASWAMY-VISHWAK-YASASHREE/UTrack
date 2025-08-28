@@ -67,6 +67,11 @@
         
         <div class="form-group">
             <label for="endpoint">Function Endpoint:</label>
+            <select id="endpoint-select" onchange="updateEndpoint()">
+                <option value="http://localhost:5001/utrack-d3efb/us-central1/createPaymentOrder">Firebase Emulator (Local)</option>
+                <option value="http://localhost:3001/createPaymentOrder">Test Server (Mock)</option>
+                <option value="https://us-central1-utrack-d3efb.cloudfunctions.net/createPaymentOrder">Production (Cloud Functions)</option>
+            </select>
             <input type="text" id="endpoint" value="http://localhost:5001/utrack-d3efb/us-central1/createPaymentOrder" />
         </div>
         
@@ -119,6 +124,12 @@
     </div>
 
     <script>
+        function updateEndpoint() {
+            const select = document.getElementById('endpoint-select');
+            const input = document.getElementById('endpoint');
+            input.value = select.value;
+        }
+
         function showStatus(message, type) {
             const statusDiv = document.getElementById('status');
             statusDiv.className = `status ${type}`;
