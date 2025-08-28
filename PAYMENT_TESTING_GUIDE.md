@@ -10,7 +10,7 @@ Before testing, ensure the following environment variables are configured:
 
 #### Frontend (.env)
 ```
-VITE_RAZORPAY_KEY_ID=rzp_test_your_key_id
+VITE_RAZORPAY_KEY_ID=rzp_test_zAzYoKHbMhK7mn
 VITE_FIREBASE_API_KEY=your_firebase_api_key
 VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
 VITE_FIREBASE_PROJECT_ID=your_project_id
@@ -18,8 +18,8 @@ VITE_FIREBASE_PROJECT_ID=your_project_id
 
 #### Backend (functions/.env)
 ```
-RAZORPAY_KEY_ID=rzp_test_your_key_id
-RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+RAZORPAY_KEY_ID=rzp_test_zAzYoKHbMhK7mn
+RAZORPAY_KEY_SECRET=RcFeis144EVNbLjdpQwdx5rp
 RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
 SENDGRID_API_KEY=your_sendgrid_api_key
 ADMIN_EMAIL=admin@yourdomain.com
