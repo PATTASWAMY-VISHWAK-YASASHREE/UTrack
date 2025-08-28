@@ -1,10 +1,10 @@
 import React from 'react';
 import BottomNav from '../components/BottomNav';
 import './PageStyles.css';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import { auth, db } from '../firebase'; 
 import SkeletonLayout from "../components/SkeletonLayout"
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 
 // ===== BUDGET ALERT SYSTEM =====
@@ -178,7 +178,7 @@ const ReceiptItem = ({ amount, type, onViewClick }) => (
   </div>
 );
 
-const TransactionItem = ({ transaction, transactionId }) => {
+const TransactionItem = ({ transaction, transactionId, isLive = false }) => {
   const formatDate = (timestamp) => {
     if (!timestamp) return 'Unknown date';
     const date = new Date(timestamp);
@@ -260,7 +260,10 @@ const TransactionItem = ({ transaction, transactionId }) => {
         </div>
         
         <div className="ml-4 text-right">
-          <div className="text-blue-400 text-xs mb-1">TRANSACTION</div>
+          <div className="flex items-center gap-1 justify-end mb-1">
+            <div className="text-blue-400 text-xs">TRANSACTION</div>
+            {isLive && <span className="text-green-400 text-xs">● LIVE</span>}
+          </div>
           <div className="text-white font-mono text-xs bg-gray-600 px-2 py-1 rounded">
             #{transactionId.slice(-6).toUpperCase()}
           </div>
@@ -301,13 +304,13 @@ const ChatItem = ({ is_chat, title, description }) => {
 
 const Home = () => {
   const [userData, setUserData] = useState(null);
-  const [userBills, setUserBills] = useState(null);
-  const [htmlData, setHtmlData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [modalHtml, setModalHtml] = useState(null);
   const [chats, setChats] = useState(false);
   const [dbchats, setDbChats] = useState([]);
   const [useruid, setUserUid] = useState(null);
+  const [paymentTransactions, setPaymentTransactions] = useState([]);
+  const [lastUpdate, setLastUpdate] = useState(Date.now()); // For triggering recalculations
   
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -339,6 +342,42 @@ const Home = () => {
 
     return () => unsubscribe();
   }, []);
+
+  // Real-time listener for payment transactions
+  useEffect(() => {
+    if (!useruid) return;
+
+    console.log("🔄 Setting up real-time payment transactions listener for user:", useruid);
+    
+    const transactionsRef = collection(db, 'transactions');
+    const q = query(
+      transactionsRef,
+      where('userId', '==', useruid),
+      orderBy('createdAt', 'desc'),
+      limit(50) // Limit to recent transactions for performance
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const transactions = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        transactions.push({
+          id: doc.id,
+          ...data,
+          // Ensure consistent date format
+          createdAt: data.createdAt || new Date().toISOString()
+        });
+      });
+      
+      console.log("📊 Payment transactions updated:", transactions.length);
+      setPaymentTransactions(transactions);
+      setLastUpdate(Date.now()); // Trigger recalculation
+    }, (error) => {
+      console.error("Error listening to payment transactions:", error);
+    });
+
+    return () => unsubscribe();
+  }, [useruid]);
 
   const openModal = (htmlContent) => {
     setModalHtml(htmlContent);
@@ -385,7 +424,8 @@ const Home = () => {
     return null;
   }
 
-  function calculateSpendingByTime(userbill) {
+  // New unified spending calculation that includes both bills and payment transactions
+  function calculateUnifiedSpendingByTime(userbill, paymentTransactions) {
     const now = new Date();
     const todayStr = now.toISOString().slice(0, 10);
     const startOfWeek = new Date(now);
@@ -394,41 +434,86 @@ const Home = () => {
 
     let total = 0, today = 0, week = 0, month = 0;
 
-    for (const bill of userbill) {
-      const amountRaw = bill?.json?.total_amount;
-      const dateStr = bill?.json?.time_stamp;
+    // Process user bills (receipt scans)
+    if (userbill && Array.isArray(userbill)) {
+      for (const bill of userbill) {
+        const amountRaw = bill?.json?.total_amount;
+        const dateStr = bill?.json?.time_stamp;
 
-      if (!amountRaw || !dateStr) continue;
+        if (!amountRaw || !dateStr) continue;
 
-      const amount = typeof amountRaw === "string"
-        ? parseFloat(amountRaw.match(/\d+(\.\d+)?/)?.[0] || 0)
-        : amountRaw;
+        const amount = typeof amountRaw === "string"
+          ? parseFloat(amountRaw.match(/\d+(\.\d+)?/)?.[0] || 0)
+          : amountRaw;
 
-      if (isNaN(amount)) continue;
+        if (isNaN(amount)) continue;
 
-      const billDate = parseFlexibleDate(dateStr);
-      if (!billDate || isNaN(billDate)) continue;
+        const billDate = parseFlexibleDate(dateStr);
+        if (!billDate || isNaN(billDate)) continue;
 
-      total += amount;
+        total += amount;
 
-      if (billDate.toISOString().slice(0, 10) === todayStr) {
-        today += amount;
-      }
+        if (billDate.toISOString().slice(0, 10) === todayStr) {
+          today += amount;
+        }
 
-      if (billDate >= startOfWeek && billDate <= now) {
-        week += amount;
-      }
+        if (billDate >= startOfWeek && billDate <= now) {
+          week += amount;
+        }
 
-      if (billDate >= startOfMonth && billDate <= now) {
-        month += amount;
+        if (billDate >= startOfMonth && billDate <= now) {
+          month += amount;
+        }
       }
     }
+
+    // Process payment transactions
+    if (paymentTransactions && Array.isArray(paymentTransactions)) {
+      for (const transaction of paymentTransactions) {
+        const amount = transaction.amount || 0;
+        const dateStr = transaction.createdAt;
+
+        if (!amount || !dateStr) continue;
+
+        if (isNaN(amount) || amount <= 0) continue;
+
+        const transactionDate = new Date(dateStr);
+        if (!transactionDate || isNaN(transactionDate)) continue;
+
+        total += amount;
+
+        if (transactionDate.toISOString().slice(0, 10) === todayStr) {
+          today += amount;
+        }
+
+        if (transactionDate >= startOfWeek && transactionDate <= now) {
+          week += amount;
+        }
+
+        if (transactionDate >= startOfMonth && transactionDate <= now) {
+          month += amount;
+        }
+      }
+    }
+
+    console.log("💰 Unified spending calculation:", { 
+      billsCount: userbill?.length || 0, 
+      transactionsCount: paymentTransactions?.length || 0,
+      total, today, week, month 
+    });
 
     return { total, today, week, month };
   }
 
-  const { total, today, week, month } = calculateSpendingByTime(userBill || []);
-  console.log({ total, today, week, month });
+  // Legacy function for backward compatibility (kept for potential future use)
+  // eslint-disable-next-line no-unused-vars
+  function calculateSpendingByTime(userbill) {
+    return calculateUnifiedSpendingByTime(userbill, []);
+  }
+
+  // Calculate unified spending including both bills and payment transactions
+  const { total, today, week, month } = calculateUnifiedSpendingByTime(userBill || [], paymentTransactions || []);
+  console.log("📊 Total spending (bills + payments):", { total, today, week, month });
 
   function calculateTotalSpending(userbill) {
     return userbill.reduce((sum, bill) => {
@@ -468,7 +553,7 @@ const Home = () => {
     overall: { spent: total, budget: budget }
   }
 
-  const updateUserSpendings = async () => {
+  const updateUserSpendings = useCallback(async () => {
     try {
       const userRef = doc(db, "users", useruid);
       await updateDoc(userRef, {
@@ -482,7 +567,7 @@ const Home = () => {
       console.log('📊 User spendings:', userSpendings);
       
       if (user?.email) {
-        const exceededBudgets = Object.entries(userSpendings).filter(([_, data]) => data.spent > data.budget);
+        const exceededBudgets = Object.entries(userSpendings).filter(([, data]) => data.spent > data.budget);
         console.log('⚠️ Exceeded budgets:', exceededBudgets);
         
         if (exceededBudgets.length > 0 && shouldSendAlert(user.email, exceededBudgets)) {
@@ -495,14 +580,15 @@ const Home = () => {
     } catch (error) {
       console.error("❌ Error updating userspendings:", error);
     }
-  };
+  }, [useruid, userSpendings]);
 
-  // Call updateUserSpendings when data is ready
+  // Call updateUserSpendings when data is ready or payment transactions change
   useEffect(() => {
     if (userData && useruid && budget) {
+      console.log("🔄 Updating user spendings due to data change");
       updateUserSpendings();
     }
-  }, [userData, useruid, budget, total, today, week, month]);
+  }, [userData, useruid, budget, total, today, week, month, paymentTransactions, lastUpdate]);
 
   console.log(budgetObject)
   if (loading) return <SkeletonLayout />;
@@ -523,6 +609,13 @@ const Home = () => {
 
           {/* Spending Overview */}
           <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-medium">Spending Overview</h2>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-green-400">● Live Updates</span>
+                <span className="text-gray-400">Bills + Payments</span>
+              </div>
+            </div>
             <div className="flex flex-wrap gap-4">
               {Object.entries(data).map(([key, values], index) => (
                 <SpendingCard
@@ -566,35 +659,75 @@ const Home = () => {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-medium">Recent transactions</h2>
-              <button className="text-gray-400 text-sm hover:text-white transition-colors">
-                view all
-              </button>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-green-400">● Live</span>
+                <button className="text-gray-400 text-sm hover:text-white transition-colors">
+                  view all
+                </button>
+              </div>
             </div>
             <div className="receipts-card">
-              {userData?.transactions && Object.keys(userData.transactions).length > 0 ? (
-                <div className="flex flex-col gap-3">
-                  {Object.entries(userData.transactions).slice(-5).reverse().map(([transactionId, transaction]) => (
-                    <TransactionItem 
-                      key={transactionId} 
-                      transaction={transaction} 
-                      transactionId={transactionId}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="bg-gray-800 text-white p-4 rounded-lg text-center shadow-md">
-                  <p className="text-lg font-semibold mb-2">💳 No transactions yet</p>
-                  <p className="text-sm text-gray-400 mb-3">
-                    Use our <span className="text-blue-400 font-medium">secure payment gateway</span> to make your first transaction!
-                  </p>
-                  <button 
-                    onClick={() => window.location.href = '/alerts'}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Make Payment
-                  </button>
-                </div>
-              )}
+              {(() => {
+                // Combine and sort all transactions by timestamp
+                const allTransactions = [];
+                
+                // Add user document transactions (legacy)
+                if (userData?.transactions) {
+                  Object.entries(userData.transactions).forEach(([transactionId, transaction]) => {
+                    allTransactions.push({
+                      id: transactionId,
+                      type: 'legacy',
+                      ...transaction,
+                      timestamp: transaction.timestamp || transaction.createdAt || new Date().toISOString()
+                    });
+                  });
+                }
+
+                // Add real-time payment transactions
+                if (paymentTransactions) {
+                  paymentTransactions.forEach((transaction) => {
+                    allTransactions.push({
+                      ...transaction,
+                      type: 'payment',
+                      timestamp: transaction.createdAt
+                    });
+                  });
+                }
+
+                // Sort by timestamp (newest first)
+                allTransactions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
+                return allTransactions.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    {allTransactions.slice(0, 5).map((transaction, index) => (
+                      <TransactionItem 
+                        key={transaction.id || `transaction-${index}`}
+                        transaction={transaction} 
+                        transactionId={transaction.id || `transaction-${index}`}
+                        isLive={transaction.type === 'payment'}
+                      />
+                    ))}
+                    {paymentTransactions.length > 0 && (
+                      <div className="text-xs text-green-400 text-center mt-2">
+                        🔄 Real-time updates enabled • {paymentTransactions.length} payment transaction(s)
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-gray-800 text-white p-4 rounded-lg text-center shadow-md">
+                    <p className="text-lg font-semibold mb-2">💳 No transactions yet</p>
+                    <p className="text-sm text-gray-400 mb-3">
+                      Use our <span className="text-blue-400 font-medium">secure payment gateway</span> to make your first transaction!
+                    </p>
+                    <button 
+                      onClick={() => window.location.href = '/alerts'}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Make Payment
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
