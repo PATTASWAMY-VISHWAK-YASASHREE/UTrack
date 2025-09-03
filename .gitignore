@@ -32,3 +32,17 @@ firestore.indexes.json
 firebase-debug.log
 ui-debug.log
 .firebase/
+src/App.jsx
+src/App.jsx
+src/dashboard/DashboardDemo.css
+src/dashboard/DashboardDemo.jsx
+src/dashboard/TransactionDashboard.css
+src/dashboard/TransactionDashboard.css
+src/dashboard/index.js
+src/pages/PaymentDashboard.jsx
+src/dashboard/TransactionDashboard.jsx
+src/App.jsx
+start-all.bat
+start-all.ps1
+src/App.jsx
+src/App.jsx
