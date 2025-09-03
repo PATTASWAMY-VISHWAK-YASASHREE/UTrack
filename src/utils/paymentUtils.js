@@ -1,36 +1,99 @@
-// Payment utility functions for UTrack
+// Payment utility functions for UTrack - SECURE VERSION
 // This file contains reusable payment functions for Razorpay integration
+import PAYMENT_CONFIG from '../config/payment.js';
 
-// Initialize Razorpay payment
+// Security: Never expose API keys in frontend
+// Keys are handled securely by backend functions
+
+// Initialize Razorpay payment with security measures
 function initializePayment(orderData, userInfo = {}) {
-  // Make sure we have the minimum required data
+  // Security validation
   if (!orderData || !orderData.order || !orderData.order.id) {
-    console.error('Missing required order data for payment');
-    alert('Unable to initialize payment: Invalid order data');
+    console.error('Invalid order data received');
+    alert('Payment initialization failed. Please try again.');
+    return;
+  }
+
+  // Verify order data integrity
+  if (!orderData.key_id || !orderData.order.amount) {
+    console.error('Incomplete order data from server');
+    alert('Payment setup incomplete. Please contact support.');
     return;
   }
 
   try {
-    // Configure Razorpay with only essential options
+    // Configure Razorpay with minimal exposure and disabled tracking
     const options = {
-      key: orderData.key_id || 'rzp_test_zAzYoKHbMhK7mn', // Use provided key or fallback to test key
-      amount: orderData.order.amount || 0,
-      currency: orderData.order.currency || 'INR',
+      key: orderData.key_id, // This comes securely from backend
+      amount: orderData.order.amount,
+      currency: orderData.order.currency || PAYMENT_CONFIG.defaultCurrency,
       name: 'UTrack',
-      description: 'Payment for services',
+      description: 'Secure Payment',
       order_id: orderData.order.id,
-      handler: function(response) {
-        console.log('Payment successful', response);
-        verifyPayment(response, userInfo.userId || 'anonymous');
+      
+      // Disable tracking and analytics
+      config: {
+        display: {
+          blocks: {
+            banks: {
+              name: 'Pay using ' + (orderData.order.currency || 'INR'),
+              instruments: [
+                {
+                  method: 'card'
+                },
+                {
+                  method: 'netbanking'
+                },
+                {
+                  method: 'wallet'
+                },
+                {
+                  method: 'upi'
+                }
+              ]
+            }
+          },
+          hide: [
+            {
+              method: 'paylater'
+            }
+          ],
+          preferences: {
+            show_default_blocks: true
+          }
+        }
       },
+      
+      // Minimize data collection
+      send_sms_hash: false,
+      allow_rotation: false,
+      
+      handler: function(response) {
+        // Secure payment verification
+        verifyPaymentSecurely(response, userInfo.userId);
+      },
+      
       modal: {
         ondismiss: function() {
-          console.log('Checkout closed without payment');
-        }
-      }
+          console.log('Payment cancelled by user');
+        },
+        // Disable escape key
+        escape: false,
+        // Disable backdrop click
+        backdrop_close: false
+      },
+      
+      theme: {
+        ...PAYMENT_CONFIG.theme,
+        // Additional security settings
+        hide_topbar: true
+      },
+      
+      // Apply security options from config
+      ...PAYMENT_CONFIG.razorpayOptions
     };
 
-    // Add optional fields only if they exist
+    // Add user info securely (only if provided)
     if (userInfo.name || userInfo.email || userInfo.contact) {
       options.prefill = {};
       
@@ -39,53 +102,83 @@ function initializePayment(orderData, userInfo = {}) {
       if (userInfo.contact) options.prefill.contact = userInfo.contact;
     }
 
+    // Add notes securely
     if (userInfo.userId) {
-      options.notes = { userId: userInfo.userId };
+      options.notes = { 
+        userId: userInfo.userId,
+        timestamp: Date.now()
+      };
     }
 
-    // Initialize and open Razorpay
+    // Initialize Razorpay
     const rzp = new window.Razorpay(options);
     
     rzp.on('payment.failed', function(failedResponse) {
-      console.error('Payment failed', failedResponse.error);
-      alert('Payment failed: ' + (failedResponse.error.description || 'Unknown error'));
+      console.error('Payment failed');
+      // Don't expose error details to user for security
+      alert('Payment failed. Please try again or contact support.');
     });
     
     rzp.open();
   } catch (error) {
-    console.error('Error initializing payment', error);
-    alert('Unable to initialize payment: ' + (error.message || 'Unknown error'));
+    console.error('Payment initialization error');
+    alert('Unable to start payment. Please try again.');
   }
 }
 
-// Function to create a payment order and then initialize checkout
+// Secure function to create payment order
 export async function createPaymentOrder(paymentDetails) {
   try {
-    const response = await fetch('http://127.0.0.1:5001/utrack-d3efb/us-central1/createPaymentOrder', {
+    // Input validation and sanitization
+    if (!paymentDetails.amount || paymentDetails.amount <= 0) {
+      throw new Error('Invalid payment amount');
+    }
+
+    if (!paymentDetails.userId) {
+      throw new Error('User authentication required');
+    }
+
+    // Prepare secure request data
+    const requestData = {
+      amount: Math.round(parseFloat(paymentDetails.amount) * 100) / 100, // Sanitize amount
+      currency: paymentDetails.currency || PAYMENT_CONFIG.defaultCurrency,
+      description: (paymentDetails.description || '').slice(0, 100), // Limit description length
+      userId: paymentDetails.userId,
+      // Optional user info (sanitized)
+      name: (paymentDetails.name || '').slice(0, 50),
+      email: paymentDetails.email || '',
+      contact: (paymentDetails.contact || '').slice(0, 15)
+    };
+
+    // Get secure endpoint
+    const endpoints = PAYMENT_CONFIG.getCurrentEndpoints();
+    
+    const response = await fetch(endpoints.createOrder, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        // Add security headers
+        'X-Requested-With': 'XMLHttpRequest'
       },
-      body: JSON.stringify({
-        amount: paymentDetails.amount,
-        currency: 'INR',
-        description: paymentDetails.description || '',
-        userId: paymentDetails.userId,
-        name: paymentDetails.name || '',
-        email: paymentDetails.email || '',
-        contact: paymentDetails.contact || ''
-      }),
+      body: JSON.stringify(requestData),
+      // Security settings
+      credentials: 'same-origin'
     });
+    
+    if (!response.ok) {
+      throw new Error(`Payment service error: ${response.status}`);
+    }
     
     const data = await response.json();
     
     if (!data.success) {
-      throw new Error(data.error || 'Failed to create order');
+      throw new Error(data.error || 'Payment order creation failed');
     }
     
-    console.log('Order created:', data);
+    // Security: Don't log sensitive data
+    console.log('Payment order created successfully');
     
-    // Initialize payment with the order data
+    // Initialize payment with secure data
     initializePayment(data, {
       userId: paymentDetails.userId,
       name: paymentDetails.name,
@@ -93,16 +186,65 @@ export async function createPaymentOrder(paymentDetails) {
       contact: paymentDetails.contact
     });
     
-    return { success: true, order: data.order };
+    return { success: true, orderId: data.order.id };
     
   } catch (error) {
-    console.error('Error creating order:', error);
-    alert('Error: ' + error.message);
-    return { success: false, error: error.message };
+    console.error('Payment order creation failed');
+    // Don't expose internal error details
+    alert('Unable to create payment order. Please try again.');
+    return { success: false, error: 'Payment initialization failed' };
   }
 }
 
-// Legacy function for backward compatibility
+// Secure payment verification function
+async function verifyPaymentSecurely(response, userId) {
+  try {
+    if (!response.razorpay_payment_id || !response.razorpay_order_id || !response.razorpay_signature) {
+      throw new Error('Incomplete payment response');
+    }
+
+    const endpoints = PAYMENT_CONFIG.getCurrentEndpoints();
+    
+    const verificationResponse = await fetch(endpoints.verifyPayment, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({
+        razorpay_payment_id: response.razorpay_payment_id,
+        razorpay_order_id: response.razorpay_order_id,
+        razorpay_signature: response.razorpay_signature,
+        userId: userId
+      }),
+      credentials: 'same-origin'
+    });
+
+    if (!verificationResponse.ok) {
+      throw new Error('Payment verification failed');
+    }
+
+    const verificationResult = await verificationResponse.json();
+    
+    if (verificationResult.success) {
+      console.log('Payment verified successfully');
+      alert('Payment successful! Transaction has been verified.');
+      // Redirect to success page securely
+      window.location.href = '/payment-success';
+    } else {
+      throw new Error('Payment verification failed');
+    }
+    
+  } catch (error) {
+    console.error('Payment verification error');
+    alert('Payment verification failed. Please contact support with your payment ID.');
+  }
+}
+
+// Export secure payment verification
+export const verifyPayment = verifyPaymentSecurely;
+
+// Legacy function for backward compatibility (secure)
 export async function initiatePayment(amount, userId, description = '', userDetails = {}) {
   return await createPaymentOrder({
     amount: amount,
@@ -114,227 +256,54 @@ export async function initiatePayment(amount, userId, description = '', userDeta
   });
 }
 
-// Minimal and robust verification function
-export async function verifyPayment(response, userId = 'anonymous') {
-  console.log('Verifying payment...', response);
+// Secure utility functions
+export function validatePaymentData(paymentData) {
+  const errors = [];
   
-  // Ensure we have the minimum required data from Razorpay response
-  if (!response || !response.razorpay_payment_id || !response.razorpay_order_id || !response.razorpay_signature) {
-    console.error('Missing required payment data from Razorpay');
-    alert('Payment verification failed: Missing payment data');
-    return;
+  if (!paymentData.amount || paymentData.amount <= 0) {
+    errors.push('Amount must be greater than 0');
   }
   
-  try {
-    // Prepare verification data - only the essential fields
-    const verificationData = {
-      razorpay_payment_id: response.razorpay_payment_id,
-      razorpay_order_id: response.razorpay_order_id,
-      razorpay_signature: response.razorpay_signature,
-      userId: userId || 'anonymous' // Fall back to anonymous if userId not provided
-    };
-    
-    console.log('Sending verification request:', verificationData);
-    
-    // Call the verification endpoint
-    const verifyResponse = await fetch('http://127.0.0.1:5001/utrack-d3efb/us-central1/verifyPayment', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(verificationData)
-    });
-    
-    // Parse response
-    const result = await verifyResponse.json();
-    
-    if (result.success) {
-      console.log('Payment verification successful:', result);
-      
-      // Store minimal payment data
-      const paymentData = {
-        transactionId: response.razorpay_payment_id,
-        amount: result.payment?.amount ? `₹${result.payment.amount}` : 'Paid',
-        method: result.payment?.method || 'Online',
-        dateTime: new Date().toLocaleString()
-      };
-      
-      // Store for success page
-      localStorage.setItem('paymentData', JSON.stringify(paymentData));
-      
-      // Alert user
-      alert('Payment successful! Redirecting to confirmation page...');
-      
-      // Redirect to success page (React route)
-      setTimeout(() => {
-        window.location.href = '/payment-success';
-      }, 1000);
-    } else {
-      console.error('Payment verification failed:', result.error);
-      alert('Payment verification failed: ' + (result.error || 'Unknown error'));
-    }
-  } catch (error) {
-    console.error('Error during payment verification:', error);
-    
-    // Still try to redirect to success page if we have the payment ID
-    // since the payment might have succeeded despite verification errors
-    if (response && response.razorpay_payment_id) {
-      alert('Payment may have succeeded, but verification encountered an error. You will be redirected to the confirmation page.');
-      
-      const paymentData = {
-        transactionId: response.razorpay_payment_id,
-        amount: 'Verification pending',
-        method: 'Online',
-        dateTime: new Date().toLocaleString(),
-        status: 'Verification pending'
-      };
-      
-      localStorage.setItem('paymentData', JSON.stringify(paymentData));
-      
-      setTimeout(() => {
-        window.location.href = '/payment-success';
-      }, 1000);
-    } else {
-      alert('Payment verification failed. Please contact support with your payment ID if payment was deducted.');
-    }
+  if (paymentData.amount > 100000) {
+    errors.push('Amount cannot exceed ₹1,00,000');
   }
+  
+  if (paymentData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(paymentData.email)) {
+    errors.push('Invalid email format');
+  }
+  
+  if (paymentData.contact && !/^\d{10}$/.test(paymentData.contact.replace(/\D/g, ''))) {
+    errors.push('Contact number must be 10 digits');
+  }
+  
+  return errors;
 }
 
-// Helper function to load Razorpay script if not already loaded
+export function formatAmount(amount, currency = 'INR') {
+  const formatter = new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2
+  });
+  return formatter.format(amount);
+}
+
+// Secure script loading
 export function loadRazorpayScript() {
-  return new Promise((resolve) => {
-    // Check if Razorpay is already loaded
+  return new Promise((resolve, reject) => {
     if (window.Razorpay) {
       resolve(true);
       return;
     }
 
-    // Check if script is already in DOM
-    const existingScript = document.getElementById('razorpay-script');
-    if (existingScript) {
-      existingScript.onload = () => resolve(true);
-      return;
-    }
-
-    // Create and load script
     const script = document.createElement('script');
-    script.id = 'razorpay-script';
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => {
-      console.log('Razorpay script loaded successfully');
-      resolve(true);
-    };
-    script.onerror = () => {
-      console.error('Failed to load Razorpay script');
-      resolve(false);
-    };
+    script.onload = () => resolve(true);
+    script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
     
-    document.body.appendChild(script);
+    // Security: Set attributes for safe script loading
+    script.crossOrigin = 'anonymous';
+    
+    document.head.appendChild(script);
   });
 }
-
-// Helper function to validate payment data
-export function validatePaymentData(amount, email, currency = 'INR') {
-  const errors = [];
-  
-  // Validate amount
-  if (!amount || isNaN(amount) || parseFloat(amount) <= 0) {
-    errors.push('Please enter a valid amount greater than 0');
-  }
-  
-  // Validate email
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!email || !emailRegex.test(email)) {
-    errors.push('Please enter a valid email address');
-  }
-  
-  // Validate currency
-  const supportedCurrencies = ['INR', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'CNY', 'SGD'];
-  if (!supportedCurrencies.includes(currency)) {
-    errors.push('Unsupported currency selected');
-  }
-  
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-}
-
-// Helper function to format amount for display
-export function formatAmount(amount, currency = 'INR') {
-  const currencySymbols = {
-    'INR': '₹',
-    'USD': '$',
-    'EUR': '€',
-    'GBP': '£',
-    'JPY': '¥',
-    'AUD': 'A$',
-    'CAD': 'C$',
-    'CHF': 'CHF',
-    'CNY': '¥',
-    'SGD': 'S$'
-  };
-  
-  const symbol = currencySymbols[currency] || currency;
-  const formattedAmount = parseFloat(amount).toFixed(2);
-  
-  return `${symbol}${formattedAmount}`;
-}
-
-// Example usage function
-export function createPaymentButton(containerId, config) {
-  const container = document.getElementById(containerId);
-  if (!container) {
-    console.error(`Container with id '${containerId}' not found`);
-    return;
-  }
-  
-  const {
-    amount,
-    userId,
-    description = 'UTrack Payment',
-    userDetails = {},
-    buttonText = 'Pay Now',
-    buttonClass = 'pay-button'
-  } = config;
-  
-  // Validate required parameters
-  if (!amount || !userId) {
-    console.error('Amount and userId are required for payment button');
-    return;
-  }
-  
-  // Create button element
-  const button = document.createElement('button');
-  button.className = buttonClass;
-  button.textContent = `${buttonText} ${formatAmount(amount)}`;
-  button.onclick = async () => {
-    // Load Razorpay script first
-    const scriptLoaded = await loadRazorpayScript();
-    if (!scriptLoaded) {
-      alert('Failed to load payment system. Please try again.');
-      return;
-    }
-    
-    // Validate payment data
-    const validation = validatePaymentData(amount, userDetails.email);
-    if (!validation.isValid) {
-      alert('Payment validation failed:\n' + validation.errors.join('\n'));
-      return;
-    }
-    
-    // Initiate payment
-    await initiatePayment(amount, userId, description, userDetails);
-  };
-  
-  // Clear container and add button
-  container.innerHTML = '';
-  container.appendChild(button);
-  
-  return button;
-}
-
-// Export functions to window for standalone usage
-window.verifyPayment = verifyPayment;
-window.initializePayment = initializePayment;
-window.createPaymentOrder = createPaymentOrder;

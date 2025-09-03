@@ -3,6 +3,7 @@ import { auth, db } from '../firebase';
 import { doc, addDoc, collection, updateDoc, arrayUnion } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import BottomNav from '../components/BottomNav';
+import { useNotification } from '../components/NotificationSystem.jsx';
 import { 
   initiatePayment, 
   createPaymentOrder,
@@ -15,6 +16,7 @@ import './PageStyles.css';
 import './Alerts.css';
 
 const Alerts = () => {
+  const { showError, showSuccess, showPaymentConfirmation, showWarning } = useNotification();
   const [user, setUser] = useState(null);
   const [paymentData, setPaymentData] = useState({
     amount: '',
@@ -82,11 +84,21 @@ const Alerts = () => {
   };
 
   const validatePaymentForm = () => {
-    const { amount, currency, email } = paymentData;
+    const { amount, currency, email, contact } = paymentData;
     
-    const validation = validatePaymentData(amount, email, currency);
-    if (!validation.isValid) {
-      alert('Validation failed:\n' + validation.errors.join('\n'));
+    // Use the new validatePaymentData function with correct parameters
+    const errors = validatePaymentData({
+      amount: parseFloat(amount),
+      email: email,
+      contact: contact,
+      currency: currency
+    });
+    
+    if (errors.length > 0) {
+      showError('Validation failed', {
+        message: errors.join('\n'),
+        duration: 8000
+      });
       return false;
     }
 
@@ -96,10 +108,27 @@ const Alerts = () => {
   const createRazorpayOrder = async () => {
     if (!validatePaymentForm()) return;
     if (!user) {
-      alert('Please log in to make a payment');
+      showWarning('Please log in to make a payment');
       return;
     }
 
+    // Show payment confirmation dialog
+    showPaymentConfirmation(
+      parseFloat(paymentData.amount),
+      paymentData.currency,
+      paymentData.description || 'Payment transaction',
+      {
+        onAction: async (action) => {
+          if (action === 'proceed') {
+            await processPayment();
+          }
+          // If action is 'cancel', do nothing
+        }
+      }
+    );
+  };
+
+  const processPayment = async () => {
     setLoading(true);
     try {
       // Use the new createPaymentOrder function
@@ -118,6 +147,7 @@ const Alerts = () => {
 
     } catch (error) {
       console.error('Error creating order:', error);
+      showError('Failed to create payment order: ' + error.message);
       setPaymentStatus({
         status: 'error',
         message: 'Failed to create payment order: ' + error.message
@@ -148,6 +178,11 @@ const Alerts = () => {
         verificationData: verificationData
       });
 
+      showSuccess('Payment completed successfully!', {
+        description: `Transaction ID: ${paymentResponse.razorpay_payment_id}`,
+        duration: 10000
+      });
+
       setPaymentStatus({
         status: 'success',
         message: 'Payment completed successfully!',
@@ -160,6 +195,7 @@ const Alerts = () => {
       });
     } catch (error) {
       console.error('Error handling successful payment:', error);
+      showError('Payment was successful but failed to save transaction details.');
       setPaymentStatus({
         status: 'error',
         message: 'Payment was successful but failed to save transaction details.'
@@ -171,6 +207,10 @@ const Alerts = () => {
   const handlePaymentError = (errorMessage, errorDetails) => {
     setLoading(false);
     console.error('Payment error:', errorMessage, errorDetails);
+    showError('Payment failed', {
+      message: errorMessage,
+      duration: 8000
+    });
     setPaymentStatus({
       status: 'error',
       message: errorMessage
@@ -180,6 +220,7 @@ const Alerts = () => {
   // Global payment cancel handler
   const handlePaymentCancel = () => {
     setLoading(false);
+    showWarning('Payment was cancelled by user');
     setPaymentStatus({
       status: 'cancelled',
       message: 'Payment was cancelled by user'

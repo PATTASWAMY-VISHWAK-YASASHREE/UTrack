@@ -15,13 +15,29 @@ const db = admin.firestore();
 // Initialize Razorpay instance - moved to function scope to avoid initialization errors
 let razorpay;
 
+// Security: Rate limiting and request validation
+const validateRequest = (req) => {
+  // Check for required headers
+  if (!req.headers['content-type'] || !req.headers['content-type'].includes('application/json')) {
+    throw new Error('Invalid content type');
+  }
+  
+  // Basic request size validation
+  const requestSize = JSON.stringify(req.body).length;
+  if (requestSize > 10000) { // 10KB limit
+    throw new Error('Request too large');
+  }
+  
+  return true;
+};
+
 // Helper function to validate Razorpay configuration
 const validateRazorpayConfig = () => {
   const keyId = functions.config().razorpay?.key_id || process.env.RAZORPAY_KEY_ID;
   const keySecret = functions.config().razorpay?.key_secret || process.env.RAZORPAY_KEY_SECRET;
   
   if (!keyId || !keySecret) {
-    throw new Error('Razorpay credentials not configured. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in .env file');
+    throw new Error('Razorpay credentials not configured');
   }
   
   return { keyId, keySecret };

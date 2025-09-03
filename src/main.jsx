@@ -5,6 +5,8 @@ import App from './App.jsx';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 
+// Import network blocker to prevent tracking
+import './utils/networkBlocker.js';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
