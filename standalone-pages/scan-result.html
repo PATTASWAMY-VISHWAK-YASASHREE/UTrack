@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UTrack - Scan Results</title>
+    <meta name="description" content="View your processed bill scan results">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            background-color: #000;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding-bottom: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #007AFF, #00D4FF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #888;
+            font-size: 16px;
+        }
+
+        .result-section {
+            background: #111;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bill-preview {
+            background: #fff;
+            color: #000;
+            padding: 16px;
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.4;
+            margin-bottom: 16px;
+        }
+
+        .bill-preview table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .bill-preview th,
+        .bill-preview td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .bill-preview th {
+            background-color: #f5f5f5;
+            font-weight: 600;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .summary-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .summary-item.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .summary-label {
+            color: #888;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .summary-value {
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .total-amount {
+            color: #007AFF;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .items-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .item-row {
+            background: #222;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-name {
+            color: #fff;
+            font-weight: 500;
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .item-details {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+        }
+
+        .item-quantity {
+            color: #888;
+            font-size: 12px;
+        }
+
+        .item-price {
+            color: #007AFF;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .action-button {
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .action-button.primary {
+            background: linear-gradient(135deg, #007AFF, #0056CC);
+            color: white;
+        }
+
+        .action-button.primary:hover {
+            background: linear-gradient(135deg, #0056CC, #003d99);
+        }
+
+        .action-button.secondary {
+            background-color: #333;
+            color: #fff;
+        }
+
+        .action-button.secondary:hover {
+            background-color: #444;
+        }
+
+        .action-button.tertiary {
+            background-color: transparent;
+            color: #007AFF;
+            border: 1px solid #007AFF;
+        }
+
+        .action-button.tertiary:hover {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        .error-section {
+            background: linear-gradient(135deg, #4f1a1a, #5f2d2d);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            border: 1px solid #f44336;
+            margin-bottom: 20px;
+        }
+
+        .error-section h2 {
+            color: #f44336;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .error-section p {
+            color: #e0e0e0;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .json-data {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #00ff00;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .export-section {
+            background: #111;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #333;
+        }
+
+        .export-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .export-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 Scan Results</h1>
+            <p>Review your processed bill</p>
+        </div>
+
+        <div id="errorContainer" class="error-section" style="display: none;">
+            <h2>⚠️ No Data Found</h2>
+            <p>No scan results found. Please scan a bill first.</p>
+            <a href="scan.html" class="action-button primary">Scan New Bill</a>
+        </div>
+
+        <div id="resultsContainer" style="display: none;">
+            <!-- Bill Preview Section -->
+            <div class="result-section">
+                <h3 class="section-title">📋 Bill Preview</h3>
+                <div id="billPreview" class="bill-preview"></div>
+            </div>
+
+            <!-- Summary Section -->
+            <div class="result-section">
+                <h3 class="section-title">📊 Summary</h3>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <span class="summary-label">Total Items:</span>
+                        <span id="totalItems" class="summary-value">0</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Total Amount:</span>
+                        <span id="totalAmount" class="summary-value total-amount">₹0.00</span>
+                    </div>
+                    <div id="merchantInfo" class="summary-item full-width" style="display: none;">
+                        <span class="summary-label">Merchant:</span>
+                        <span id="merchantName" class="summary-value"></span>
+                    </div>
+                    <div id="dateInfo" class="summary-item full-width" style="display: none;">
+                        <span class="summary-label">Date:</span>
+                        <span id="billDate" class="summary-value"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items Section -->
+            <div id="itemsSection" class="result-section" style="display: none;">
+                <h3 class="section-title">🛒 Items</h3>
+                <div id="itemsList" class="items-list"></div>
+            </div>
+
+            <!-- Export Section -->
+            <div class="export-section">
+                <h3 class="section-title">💾 Export Data</h3>
+                <div class="export-buttons">
+                    <button class="action-button secondary" onclick="downloadJSON()">📄 Download JSON</button>
+                    <button class="action-button secondary" onclick="downloadHTML()">🌐 Download HTML</button>
+                    <button class="action-button tertiary" onclick="copyToClipboard()">📋 Copy Data</button>
+                    <button class="action-button tertiary" onclick="shareData()">📤 Share</button>
+                </div>
+            </div>
+
+            <!-- Raw JSON Data (Hidden by default) -->
+            <div class="result-section" style="display: none;" id="rawDataSection">
+                <h3 class="section-title">🔧 Raw JSON Data</h3>
+                <div id="jsonData" class="json-data"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <a href="scan.html" class="action-button secondary">📷 Scan Another Bill</a>
+                <button class="action-button tertiary" onclick="toggleRawData()">👁️ Toggle Raw Data</button>
+                <button class="action-button primary" onclick="saveBill()">💾 Save to Account</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let billData = null;
+
+        function loadBillData() {
+            const savedData = localStorage.getItem('billScanResult');
+            if (savedData) {
+                try {
+                    billData = JSON.parse(savedData);
+                    displayResults();
+                } catch (error) {
+                    console.error('Error parsing bill data:', error);
+                    showError();
+                }
+            } else {
+                showError();
+            }
+        }
+
+        function showError() {
+            document.getElementById('errorContainer').style.display = 'block';
+            document.getElementById('resultsContainer').style.display = 'none';
+        }
+
+        function displayResults() {
+            document.getElementById('errorContainer').style.display = 'none';
+            document.getElementById('resultsContainer').style.display = 'block';
+
+            // Display HTML preview
+            if (billData.html) {
+                document.getElementById('billPreview').innerHTML = billData.html;
+            }
+
+            // Process JSON data
+            const jsonData = billData.json || {};
+            const items = jsonData.items || [];
+
+            // Update summary
+            document.getElementById('totalItems').textContent = items.length;
+            
+            const total = calculateTotal(items);
+            document.getElementById('totalAmount').textContent = `₹${total.toFixed(2)}`;
+
+            // Show merchant info if available
+            if (jsonData.merchant) {
+                document.getElementById('merchantInfo').style.display = 'block';
+                document.getElementById('merchantName').textContent = jsonData.merchant;
+            }
+
+            // Show date info if available
+            if (jsonData.date) {
+                document.getElementById('dateInfo').style.display = 'block';
+                document.getElementById('billDate').textContent = jsonData.date;
+            }
+
+            // Display items
+            if (items.length > 0) {
+                document.getElementById('itemsSection').style.display = 'block';
+                const itemsList = document.getElementById('itemsList');
+                itemsList.innerHTML = '';
+
+                items.forEach((item, index) => {
+                    const itemRow = document.createElement('div');
+                    itemRow.className = 'item-row';
+                    itemRow.innerHTML = `
+                        <div class="item-name">${item.name || item.description || `Item ${index + 1}`}</div>
+                        <div class="item-details">
+                            <div class="item-quantity">Qty: ${item.quantity || 1}</div>
+                            <div class="item-price">₹${parseFloat(item.price || 0).toFixed(2)}</div>
+                        </div>
+                    `;
+                    itemsList.appendChild(itemRow);
+                });
+            }
+
+            // Display raw JSON data
+            document.getElementById('jsonData').textContent = JSON.stringify(jsonData, null, 2);
+        }
+
+        function calculateTotal(items) {
+            return items.reduce((total, item) => {
+                const price = parseFloat(item.price) || 0;
+                const quantity = parseInt(item.quantity) || 1;
+                return total + (price * quantity);
+            }, 0);
+        }
+
+        function toggleRawData() {
+            const rawDataSection = document.getElementById('rawDataSection');
+            if (rawDataSection.style.display === 'none') {
+                rawDataSection.style.display = 'block';
+            } else {
+                rawDataSection.style.display = 'none';
+            }
+        }
+
+        function downloadJSON() {
+            if (!billData) return;
+            
+            const dataStr = JSON.stringify(billData.json, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `bill-data-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+        }
+
+        function downloadHTML() {
+            if (!billData) return;
+            
+            const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bill Receipt</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background-color: #f5f5f5; }
+    </style>
+</head>
+<body>
+    <h1>Bill Receipt</h1>
+    <p>Generated on: ${new Date().toLocaleString()}</p>
+    ${billData.html}
+</body>
+</html>`;
+            
+            const dataBlob = new Blob([htmlContent], {type: 'text/html'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `bill-receipt-${new Date().toISOString().split('T')[0]}.html`;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+        }
+
+        function copyToClipboard() {
+            if (!billData) return;
+            
+            const textData = JSON.stringify(billData.json, null, 2);
+            navigator.clipboard.writeText(textData).then(() => {
+                alert('Bill data copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert('Failed to copy data to clipboard.');
+            });
+        }
+
+        function shareData() {
+            if (!billData) return;
+            
+            if (navigator.share) {
+                const items = billData.json.items || [];
+                const total = calculateTotal(items);
+                
+                navigator.share({
+                    title: 'Bill Scan Results',
+                    text: `Scanned bill with ${items.length} items, total: ₹${total.toFixed(2)}`,
+                    url: window.location.href
+                }).catch(err => console.log('Error sharing:', err));
+            } else {
+                copyToClipboard();
+            }
+        }
+
+        function saveBill() {
+            // This would integrate with a backend service in the full app
+            alert('Bill saving functionality requires backend integration. In the full UTrack app, this would save to your account.');
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadBillData();
+        });
+    </script>
+</body>
+</html>
