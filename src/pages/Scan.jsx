@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import BottomNav from '../components/BottomNav';
 import './PageStyles.css';
 import CustomSpinner from '../components/CustomSpinner';
@@ -9,7 +9,6 @@ import { useNavigate} from 'react-router-dom';
 
 const Scan = () => {
   const [capturedImage, setCapturedImage] = useState(null);
-  const [isCapturing, setIsCapturing] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const [loading,setLoading]=useState(false);
@@ -18,7 +17,7 @@ const Scan = () => {
   const [jsonData,setJsonData]=useState(null);
   const [isBillSaved,setIisBillSaved]=useState(false);
   const navigate=useNavigate();
-  const uid=auth.currentUser.uid;
+  const uid=auth.currentUser?.uid;
  
   // Handle file upload from device storage
   const handleFileUpload = (event) => {
@@ -41,7 +40,6 @@ const Scan = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setCapturedImage(e.target.result);
-        setIsCapturing(false);
       };
       reader.readAsDataURL(file);
     }
@@ -54,16 +52,16 @@ const Scan = () => {
 
   // Trigger camera
   const triggerCamera = () => {
-    setIsCapturing(true);
     cameraInputRef.current?.click();
   };
 
   // Reset to upload screen
   const resetScan = () => {
     setCapturedImage(null);
-    setIsCapturing(false);
     setHtmlTable(null);
     setImageFile(null);
+    setJsonData(null);
+    setIisBillSaved(false);
   };
 
   const handleResult = async () => {
@@ -86,8 +84,19 @@ const Scan = () => {
       }
       const data = await response.json();
       if (data && data.data) {
-        setHtmlTable(data.data.html_table);
-        setJsonData(data.data.json);
+        const billData = {
+          html: data.data.html_table,
+          json: data.data.json,
+          image: capturedImage
+        };
+        
+        // Save to localStorage for the ScanResult page
+        localStorage.setItem('lastScannedBill', JSON.stringify(billData));
+        
+        // Navigate to ScanResult page with the data
+        navigate('/scan-result', { 
+          state: { billData } 
+        });
       } else {
         setHtmlTable('<div style="color:red">No table found in response.</div>');
       }
@@ -97,25 +106,38 @@ const Scan = () => {
       console.error('Error:', error);
     }
   };
-  const saveBill=async ()=>{
-    
-    try{
-      const userRef=doc(db,"users",uid)
-      setLoading(true);
-      await updateDoc(userRef,{
-        user_bills:arrayUnion({json:jsonData,html:htmlTable})
-      })
-      console.log("clicked")
-      setLoading(false)
-      setIisBillSaved(true)
-    }catch(error){
-      console.log("error in updating db",error)
-      setLoading(false)
+  const saveBill = async () => {
+    if (!uid) {
+      alert('You must be logged in to save bills.');
+      return;
     }
-  }
-  const handleBack=()=>{
-    setCapturedImage(false)
-  }
+    
+    try {
+      const userRef = doc(db, "users", uid);
+      setLoading(true);
+      await updateDoc(userRef, {
+        user_bills: arrayUnion({
+          json: jsonData,
+          html: htmlTable,
+          timestamp: new Date().toISOString()
+        })
+      });
+      console.log("Bill saved successfully");
+      setLoading(false);
+      setIisBillSaved(true);
+    } catch (error) {
+      console.log("Error saving bill:", error);
+      setLoading(false);
+      alert('Failed to save bill. Please try again.');
+    }
+  };
+  
+  const handleBack = () => {
+    setCapturedImage(null);
+    setHtmlTable(null);
+    setJsonData(null);
+    setIisBillSaved(false);
+  };
   return (
     <div className="page scan-page">
       {!capturedImage ? (
@@ -215,7 +237,7 @@ const Scan = () => {
         </>
       )}
       
-      
+      <BottomNav />
     </div>
   );
 };

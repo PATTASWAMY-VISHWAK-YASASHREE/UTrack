@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UTrack - Bill Scanner</title>
+    <meta name="description" content="Scan and process bills with AI-powered OCR technology">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', Arial, sans-serif;
+            background-color: #000;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding-bottom: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #007AFF, #00D4FF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: #888;
+            font-size: 16px;
+        }
+
+        .scan-upload-container {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .upload-section {
+            border: 2px dashed #333;
+            border-radius: 12px;
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+            width: 100%;
+            background: linear-gradient(135deg, #111, #1a1a1a);
+        }
+
+        .upload-section:hover {
+            border-color: #007AFF;
+            background: linear-gradient(135deg, #1a1a1a, #222);
+        }
+
+        .upload-icon {
+            margin-bottom: 20px;
+            color: #007AFF;
+        }
+
+        .upload-icon svg {
+            transform: rotate(180deg);
+        }
+
+        .upload-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .upload-subtitle {
+            color: #888;
+            font-size: 14px;
+        }
+
+        .divider-section {
+            position: relative;
+            width: 100%;
+            text-align: center;
+        }
+
+        .divider-text {
+            background-color: #000;
+            padding: 0 20px;
+            color: #888;
+            font-size: 14px;
+            position: relative;
+        }
+
+        .divider-text::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: -150px;
+            right: -150px;
+            height: 1px;
+            background-color: #333;
+            z-index: -1;
+        }
+
+        .camera-button {
+            background: linear-gradient(135deg, #007AFF, #0056CC);
+            border: none;
+            border-radius: 12px;
+            padding: 16px 24px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .camera-button:hover {
+            background: linear-gradient(135deg, #0056CC, #003d99);
+            transform: translateY(-2px);
+        }
+
+        .image-preview-container {
+            text-align: center;
+        }
+
+        .image-preview-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .back-button {
+            background: #333;
+            border: none;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .back-button:hover {
+            background: #444;
+        }
+
+        .image-preview {
+            background: #111;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .scanned-image {
+            max-width: 100%;
+            max-height: 40vh;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+
+        .image-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .action-button {
+            flex: 1;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .action-button.secondary {
+            background-color: #333;
+            color: #fff;
+        }
+
+        .action-button.secondary:hover {
+            background-color: #444;
+        }
+
+        .action-button.primary {
+            background: linear-gradient(135deg, #007AFF, #0056CC);
+            color: white;
+        }
+
+        .action-button.primary:hover {
+            background: linear-gradient(135deg, #0056CC, #003d99);
+        }
+
+        .spinner {
+            border: 3px solid #333;
+            border-top: 3px solid #007AFF;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .demo-notice {
+            background: linear-gradient(135deg, #4a2c5a, #2c4a5a);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+            border: 1px solid #007AFF;
+        }
+
+        .demo-notice h3 {
+            color: #007AFF;
+            margin-bottom: 8px;
+        }
+
+        .demo-notice p {
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 40px;
+        }
+
+        .feature-card {
+            background: #111;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #333;
+        }
+
+        .feature-card h4 {
+            color: #007AFF;
+            margin-bottom: 8px;
+        }
+
+        .feature-card p {
+            color: #888;
+            font-size: 12px;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛡️ UTrack Scanner</h1>
+            <p>AI-powered bill scanning and processing</p>
+        </div>
+
+        <div class="demo-notice">
+            <h3>🚀 Demo Version</h3>
+            <p>This is a standalone demo of the UTrack bill scanning functionality. Upload or capture a bill image to see OCR processing in action.</p>
+        </div>
+
+        <div id="scanContainer" class="scan-upload-container">
+            <!-- Upload Bills Section -->
+            <div class="upload-section" onclick="triggerFileUpload()">
+                <div class="upload-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7,10 12,15 17,10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                </div>
+                <h2 class="upload-title">Upload bills</h2>
+                <p class="upload-subtitle">supports .jpg, .png</p>
+            </div>
+
+            <!-- OR Divider -->
+            <div class="divider-section">
+                <span class="divider-text">OR</span>
+            </div>
+
+            <!-- Scan with Camera Button -->
+            <button class="camera-button" onclick="triggerCamera()">
+                <span>📷</span>
+                Scan with Camera
+            </button>
+
+            <!-- Hidden file inputs -->
+            <input type="file" id="fileInput" onchange="handleFileUpload(event)" accept="image/jpeg,image/png" style="display: none;" />
+            <input type="file" id="cameraInput" onchange="handleCameraCapture(event)" accept="image/*" capture="environment" style="display: none;" />
+        </div>
+
+        <div id="previewContainer" style="display: none;">
+            <div class="image-preview-container">
+                <div class="image-preview-header">
+                    <button class="back-button" onclick="resetScan()">← Back</button>
+                    <h2>Scanned Image</h2>
+                </div>
+                <div class="image-preview">
+                    <img id="previewImage" class="scanned-image" alt="Scanned bill" />
+                </div>
+                <div class="image-actions">
+                    <button class="action-button secondary" onclick="resetScan()">Scan Again</button>
+                    <button class="action-button primary" onclick="processImage()">Process Bill</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingContainer" style="display: none;">
+            <div class="spinner"></div>
+            <p style="text-align: center; color: #888;">Processing your bill...</p>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <h4>🤖 AI OCR</h4>
+                <p>Advanced AI-powered text recognition</p>
+            </div>
+            <div class="feature-card">
+                <h4>📊 Data Export</h4>
+                <p>Extract structured data from receipts</p>
+            </div>
+            <div class="feature-card">
+                <h4>⚡ Fast Processing</h4>
+                <p>Quick and accurate bill analysis</p>
+            </div>
+            <div class="feature-card">
+                <h4>🔒 Secure</h4>
+                <p>Your data is processed securely</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentImageFile = null;
+
+        function triggerFileUpload() {
+            document.getElementById('fileInput').click();
+        }
+
+        function triggerCamera() {
+            document.getElementById('cameraInput').click();
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file && (file.type === 'image/jpeg' || file.type === 'image/png')) {
+                currentImageFile = file;
+                displayImage(file);
+            }
+        }
+
+        function handleCameraCapture(event) {
+            const file = event.target.files[0];
+            if (file) {
+                currentImageFile = file;
+                displayImage(file);
+            }
+        }
+
+        function displayImage(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('previewImage').src = e.target.result;
+                document.getElementById('scanContainer').style.display = 'none';
+                document.getElementById('previewContainer').style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function resetScan() {
+            document.getElementById('scanContainer').style.display = 'flex';
+            document.getElementById('previewContainer').style.display = 'none';
+            document.getElementById('loadingContainer').style.display = 'none';
+            currentImageFile = null;
+            
+            // Reset file inputs
+            document.getElementById('fileInput').value = '';
+            document.getElementById('cameraInput').value = '';
+        }
+
+        async function processImage() {
+            if (!currentImageFile) {
+                alert('No image file to process.');
+                return;
+            }
+
+            document.getElementById('previewContainer').style.display = 'none';
+            document.getElementById('loadingContainer').style.display = 'block';
+
+            try {
+                const formData = new FormData();
+                formData.append('bill_image', currentImageFile);
+                
+                const response = await fetch('https://bill-generator-m5du.onrender.com/process-bill', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                if (data && data.data) {
+                    // Store the result data
+                    localStorage.setItem('billScanResult', JSON.stringify({
+                        html: data.data.html_table,
+                        json: data.data.json,
+                        timestamp: new Date().toISOString()
+                    }));
+                    
+                    // Redirect to results page
+                    window.location.href = 'scan-result.html';
+                } else {
+                    alert('No data found in the processed bill. Please try again.');
+                    resetScan();
+                }
+            } catch (error) {
+                console.error('Error processing bill:', error);
+                alert('Error processing bill. Please check your internet connection and try again.');
+                resetScan();
+            }
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('UTrack Scanner Demo loaded');
+        });
+    </script>
+</body>
+</html>
